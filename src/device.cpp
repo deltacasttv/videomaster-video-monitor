@@ -15,7 +15,7 @@
 
 #include "device.hpp"
 
-#include "api_helper/handle_manager.hpp"
+#include "VideoMasterAPIHelper/handle_manager.hpp"
 
 #include <string>
 #include <thread>

@@ -17,7 +17,7 @@
 
 #include "signal_information.hpp"
 
-#include "api_helper/handle_manager.hpp"
+#include "VideoMasterAPIHelper/handle_manager.hpp"
 
 #include "VideoMasterHD_Core.h"
 #include "VideoMasterHD_Sdi.h"

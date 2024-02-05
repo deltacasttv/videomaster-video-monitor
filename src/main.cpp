@@ -5,8 +5,8 @@
 #include "rx_renderer.hpp"
 #include "rx_stream.hpp"
 
-#include "api_helper/api.hpp"
-#include "api_helper/resource_manager.hpp"
+#include "VideoMasterAPIHelper/api.hpp"
+#include "VideoMasterAPIHelper/resource_manager.hpp"
 
 #include <CLI/CLI.hpp>
 

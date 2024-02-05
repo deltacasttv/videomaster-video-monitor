@@ -15,7 +15,7 @@
 
 #include "rx_stream.hpp"
 
-#include "api_helper/handle_manager.hpp"
+#include "VideoMasterAPIHelper/handle_manager.hpp"
 
 #include <thread>
 #include <functional>
