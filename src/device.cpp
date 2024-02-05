@@ -15,11 +15,11 @@
 
 #include "device.hpp"
 
+#include "api_helper/handle_manager.hpp"
+
 #include <string>
 #include <thread>
 #include <unordered_map>
-
-#include "api_helper/handle_manager.hpp"
 
 using Deltacast::Helper::ApiSuccess;
 
@@ -90,51 +90,6 @@ const std::unordered_map<uint32_t, VHD_SDI_BOARDPROPERTY> id_to_rx_interface_pro
     {10, VHD_SDI_BP_RX10_INTERFACE},
     {11, VHD_SDI_BP_RX11_INTERFACE},
 };
-const std::unordered_map<uint32_t, VHD_GENLOCKSOURCE> id_to_rx_genlock_source = {
-    {0, VHD_GENLOCK_RX0},
-    {1, VHD_GENLOCK_RX1},
-    {2, VHD_GENLOCK_RX2},
-    {3, VHD_GENLOCK_RX3},
-    {4, VHD_GENLOCK_RX4},
-    {5, VHD_GENLOCK_RX5},
-    {6, VHD_GENLOCK_RX6},
-    {7, VHD_GENLOCK_RX7},
-    {8, VHD_GENLOCK_RX8},
-    {9, VHD_GENLOCK_RX9},
-    {10, VHD_GENLOCK_RX10},
-    {11, VHD_GENLOCK_RX11},
-};
-
-const std::unordered_map<uint32_t, VHD_KEYERINPUT> id_to_keyer_rx_input = {
-    {0, VHD_KINPUT_RX0},
-    {1, VHD_KINPUT_RX1},
-    {2, VHD_KINPUT_RX2},
-    {3, VHD_KINPUT_RX3},
-};
-const std::unordered_map<uint32_t, VHD_KEYERINPUT> id_to_keyer_tx_input = {
-    {0, VHD_KINPUT_TX0},
-    {1, VHD_KINPUT_TX1},
-    {2, VHD_KINPUT_TX2},
-    {3, VHD_KINPUT_TX3},
-};
-const std::unordered_map<uint32_t, VHD_KEYEROUTPUT> id_to_keyer_rx_output = {
-    {0, VHD_KOUTPUT_RX0},
-    {1, VHD_KOUTPUT_RX1},
-    {2, VHD_KOUTPUT_RX2},
-    {3, VHD_KOUTPUT_RX3},
-};
-const std::unordered_map<uint32_t, VHD_KEYER_BOARDPROPERTY> id_to_keyer_video_output_prop = {
-    {0, VHD_KEYER_BP_VIDEOOUTPUT_TX_0},
-    {1, VHD_KEYER_BP_VIDEOOUTPUT_TX_1},
-    {2, VHD_KEYER_BP_VIDEOOUTPUT_TX_2},
-    {3, VHD_KEYER_BP_VIDEOOUTPUT_TX_3},
-};
-const std::unordered_map<uint32_t, VHD_KEYER_BOARDPROPERTY> id_to_keyer_anc_output_prop = {
-    {0, VHD_KEYER_BP_ANCOUTPUT_TX_0},
-    {1, VHD_KEYER_BP_ANCOUTPUT_TX_1},
-    {2, VHD_KEYER_BP_ANCOUTPUT_TX_2},
-    {3, VHD_KEYER_BP_ANCOUTPUT_TX_3},
-};
 
 Deltacast::Device::~Device()
 {
@@ -152,14 +107,6 @@ std::unique_ptr<Deltacast::Device> Deltacast::Device::create(int device_index)
         return nullptr;
     
     return std::unique_ptr<Device>(new Device(device_index, std::move(device_handle)));
-}
-
-bool Deltacast::Device::suitable()
-{
-    ULONG number_of_on_board_keyers = 0;
-    VHD_GetBoardCapability(*handle(), VHD_KEYER_BOARD_CAP_KEYER, &number_of_on_board_keyers);
-
-    return (number_of_on_board_keyers > 0);
 }
 
 bool Deltacast::Device::set_loopback_state(int index, bool enabled)
@@ -224,69 +171,10 @@ Deltacast::SignalInformation Deltacast::Device::get_incoming_signal_information(
         || !(api_success = ApiSuccess{VHD_GetBoardProperty(*handle(), id_to_rx_interface_prop.at(rx_index), (ULONG*)&signal_information.interface)}))
     {
         std::cout << "ERROR: Cannot get incoming signal information (" << api_success << ")" << std::endl;
-        return {};
+        throw std::runtime_error("Cannot get incoming signal information");
     }
 
     return signal_information;
-}
-
-bool Deltacast::Device::wait_genlock_locked(const std::atomic_bool& stop_is_requested)
-{
-    while (!stop_is_requested.load())
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-        ULONG status = VHD_SDI_GNLKSTS_NOREF | VHD_SDI_GNLKSTS_UNLOCKED;
-        auto api_success = ApiSuccess{VHD_GetBoardProperty(*handle(), VHD_SDI_BP_GENLOCK_STATUS, &status)};
-        if (api_success && !(status & VHD_SDI_GNLKSTS_NOREF) && !(status & VHD_SDI_GNLKSTS_UNLOCKED))
-            return true;
-    }
-
-    return false;
-}
-
-bool Deltacast::Device::configure_genlock(int genlock_source_rx_index, SignalInformation signal_info)
-{
-    if (id_to_rx_genlock_source.find(genlock_source_rx_index) == id_to_rx_genlock_source.end())
-        return false;
-
-    ApiSuccess api_success;
-    if (!(api_success = ApiSuccess{VHD_SetBoardProperty(*handle(), VHD_SDI_BP_GENLOCK_SOURCE, id_to_rx_genlock_source.at(genlock_source_rx_index))})
-        || !(api_success = ApiSuccess{VHD_SetBoardProperty(*handle(), VHD_SDI_BP_GENLOCK_VIDEO_STANDARD, signal_info.video_standard)})
-        || !(api_success = ApiSuccess{VHD_SetBoardProperty(*handle(), VHD_SDI_BP_CLOCK_SYSTEM, signal_info.clock_divisor)}))
-    {
-        std::cout << "ERROR: Cannot configure genlock (" << api_success << ")" << std::endl;
-        return false;
-    }
-
-    return true;
-}
-
-bool Deltacast::Device::configure_keyer(int rx_index, int tx_index)
-{
-    if ((id_to_keyer_rx_input.find(rx_index) == id_to_keyer_rx_input.end())
-        || (id_to_keyer_tx_input.find(tx_index) == id_to_keyer_tx_input.end())
-        || (id_to_keyer_rx_output.find(rx_index) == id_to_keyer_rx_output.end())
-        || (id_to_keyer_video_output_prop.find(tx_index) == id_to_keyer_video_output_prop.end())
-        || (id_to_keyer_anc_output_prop.find(tx_index) == id_to_keyer_anc_output_prop.end()))
-        return false;
-
-    ApiSuccess api_success;
-    if (!(api_success = ApiSuccess{VHD_SetBoardProperty(*handle(), VHD_KEYER_BP_INPUT_A, id_to_keyer_rx_input.at(rx_index))})
-        || !(api_success = ApiSuccess{VHD_SetBoardProperty(*handle(), VHD_KEYER_BP_INPUT_B, id_to_keyer_tx_input.at(tx_index))})
-        || !(api_success = ApiSuccess{VHD_SetBoardProperty(*handle(), VHD_KEYER_BP_INPUT_K, id_to_keyer_tx_input.at(tx_index))})
-        || !(api_success = ApiSuccess{VHD_SetBoardProperty(*handle(), id_to_keyer_video_output_prop.at(tx_index), VHD_KOUTPUT_KEYER)})
-        || !(api_success = ApiSuccess{VHD_SetBoardProperty(*handle(), id_to_keyer_anc_output_prop.at(tx_index), id_to_keyer_rx_output.at(rx_index))})
-        || !(api_success = ApiSuccess{VHD_SetBoardProperty(*handle(), VHD_KEYER_BP_ALPHACLIP_MIN, 0)})
-        || !(api_success = ApiSuccess{VHD_SetBoardProperty(*handle(), VHD_KEYER_BP_ALPHACLIP_MAX, 1020)})
-        || !(api_success = ApiSuccess{VHD_SetBoardProperty(*handle(), VHD_KEYER_BP_ALPHABLEND_FACTOR, 1023)})
-        || !(api_success = ApiSuccess{VHD_SetBoardProperty(*handle(), VHD_KEYER_BP_ENABLE,TRUE)}))
-    {
-        std::cout << "ERROR: Cannot configure keyer (" << api_success << ")" << std::endl;
-        return false;
-    }
-
-    return true;
 }
 
 namespace Deltacast

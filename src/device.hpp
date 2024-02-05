@@ -15,15 +15,16 @@
 
 #pragma once
 
-#include <iostream>
-#include <atomic>
+#include "signal_information.hpp"
+
+#include "api_helper/handle_manager.hpp"
 
 #include "VideoMasterHD_Core.h"
 #include "VideoMasterHD_Sdi.h"
 #include "VideoMasterHD_Sdi_Keyer.h"
 
-#include "api_helper/handle_manager.hpp"
-#include "signal_information.hpp"
+#include <iostream>
+#include <atomic>
 
 namespace Deltacast
 {
@@ -45,17 +46,10 @@ namespace Deltacast
 
         static std::unique_ptr<Device> create(int device_index);
 
-        bool suitable();
-
         void enable_loopback(int index);
         void disable_loopback(int index);
         bool wait_for_incoming_signal(int rx_index, const std::atomic_bool& stop_is_requested);
         SignalInformation get_incoming_signal_information(int rx_index);
-
-        bool wait_genlock_locked(const std::atomic_bool& stop_is_requested);
-        bool configure_genlock(int genlock_source_rx_index, SignalInformation signal_info);
-
-        bool configure_keyer(int rx_index, int tx_index);
 
         int& index() { return _device_index; }
         Helper::BoardHandle& handle() { return *_device_handle; }

@@ -15,34 +15,21 @@
 
 #pragma once
 
-#include <cstdint>
+#include "signal_information.hpp"
 
 #include "VideoMasterHD_Core.h"
-#include "VideoMasterHD_Sdi.h"
+
+#include <algorithm>
+#include <atomic>
 
 namespace Deltacast
 {
-    struct SignalInformation
+    struct SharedResources
     {
-        VHD_VIDEOSTANDARD video_standard;
-        VHD_CLOCKDIVISOR clock_divisor;
-        VHD_INTERFACE interface;
-
-        friend bool operator==(const SignalInformation& left, const SignalInformation& right)
-        {
-            return left.video_standard == right.video_standard
-            && left.clock_divisor == right.clock_divisor
-            && left.interface == right.interface;
-        }
+        void reset();
+        std::atomic_bool stop_is_requested = false;
+        std::atomic_bool incoming_signal_changed = false;
+        SignalInformation signal_info;
     };
 
-    struct DecodedSignalInformation
-    {
-        uint32_t width;
-        uint32_t height;
-        bool progressive;
-        double framerate;
-    };
-
-    DecodedSignalInformation decode(const SignalInformation& signal_information);
 }
