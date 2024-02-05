@@ -21,6 +21,7 @@
 
 #include <iostream>
 #include <thread>
+#include <atomic>
 
 class RxRenderer
 {

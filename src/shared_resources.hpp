@@ -27,8 +27,8 @@ namespace Deltacast
     struct SharedResources
     {
         void reset();
-        std::atomic_bool stop_is_requested = false;
-        std::atomic_bool incoming_signal_changed = false;
+        std::atomic_bool stop_is_requested{false};
+        std::atomic_bool incoming_signal_changed{false};
         SignalInformation signal_info;
     };
 

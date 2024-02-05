@@ -54,15 +54,15 @@ FetchContent_Declare(
 )
 
 FetchContent_Declare(
-    VideoMasterAPIhelper
+    VideoMasterAPIHelper
     GIT_REPOSITORY  "https://github.com/deltacasttv/videomaster-api-helper.git"
     GIT_TAG         feature/initial_implementation
     SOURCE_DIR      "${CMAKE_SOURCE_DIR}/deps/api_helper"
 )
 
 # VideoMaster API helper
-FetchContent_MakeAvailable(VideoMasterAPIhelper)
-target_link_libraries(${PROJECT_NAME} PRIVATE VideoMasterAPIhelper)
+FetchContent_MakeAvailable(VideoMasterAPIHelper)
+target_link_libraries(${PROJECT_NAME} PRIVATE VideoMasterAPIHelper)
 
 # VideoMaster SDK
 find_package(VideoMaster REQUIRED)
