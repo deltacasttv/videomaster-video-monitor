@@ -44,11 +44,10 @@ Deltacast::RxStream::RxStream(Device& device, std::string name, int channel_inde
     if (id_to_stream_type.find(_channel_index) == id_to_stream_type.end())
         throw std::runtime_error("Cannot find stream type for channel index " + std::to_string(channel_index)); 
     
-    auto stream_handle = get_stream_handle(device.handle(), id_to_stream_type.at(channel_index), VHD_SDI_STPROC_DISJOINED_VIDEO);
+    _stream_handle = get_stream_handle(device.handle(), id_to_stream_type.at(channel_index), VHD_SDI_STPROC_DISJOINED_VIDEO);
 
-    if (!stream_handle)
+    if (!_stream_handle)
         throw std::runtime_error("Couldn't create a stream handle for channel index " + std::to_string(channel_index)); 
-    _stream_handle = std::move(stream_handle);
 }
 
 bool Deltacast::RxStream::configure(SignalInformation signal_info)
@@ -67,43 +66,29 @@ bool Deltacast::RxStream::configure(SignalInformation signal_info)
 
 bool Deltacast::RxStream::start()
 {
-    if (stream_started)
-    {
-        std::cout << "ERROR for " << _name << ": Stream already started" << std::endl;
-        return false;
-    }
-
     Deltacast::Helper::ApiSuccess api_success{VHD_StartStream(*handle())};
     if (!api_success)
     {
         std::cout << "ERROR for " << _name << ": Cannot start stream (" << api_success << ")" << std::endl;
         return false;
     }
-
-    stream_started = true;
     return true;
 }
 
-bool Deltacast::RxStream::stop() {
-    if (!stream_started)
-    {
-        std::cout << "ERROR for " << _name << ": Stream already stopped" << std::endl;
-        return false;
-    }
-
+bool Deltacast::RxStream::stop()
+{
     Deltacast::Helper::ApiSuccess api_success{VHD_StopStream(*handle())};
     if (!api_success)
     {
         std::cout << "ERROR for " << _name << ": Cannot stop stream (" << api_success << ")" << std::endl;
         return false;
     } 
-    stream_started = false;
     return true;
 }
 
 bool Deltacast::RxStream::lock_slot()
 {
-    if(_slot != nullptr)
+    if(_slot)
     {
         std::cout << "ERROR for " << _name << ": Slot already locked" << std::endl;
         return false;
@@ -120,7 +105,7 @@ bool Deltacast::RxStream::lock_slot()
 
 bool Deltacast::RxStream::unlock_slot()
 {
-    if(_slot == nullptr)
+    if(!_slot)
     {
         std::cout << "ERROR for " << _name << ": Slot already unlocked" << std::endl;
         return false;
@@ -136,27 +121,29 @@ bool Deltacast::RxStream::unlock_slot()
     return true;
 }
 
-bool Deltacast::RxStream::get_buffer(UBYTE*& buffer, ULONG& buffer_size)
+std::optional<std::pair<BYTE* /*buffer*/, ULONG /*buffer_size*/>> Deltacast::RxStream::get_buffer()
 {
-    if(_slot == nullptr)
+    auto buffer = std::pair<BYTE*, ULONG>(NULL, 0);
+
+    if(!_slot)
     {
         std::cout << "ERROR for " << _name << ": Slot not locked" << std::endl;
-        return false;
+        return {};
     }
 
-    Deltacast::Helper::ApiSuccess api_success{VHD_GetSlotBuffer(_slot, VHD_SDI_BT_VIDEO, &buffer, &buffer_size)};
+    Deltacast::Helper::ApiSuccess api_success{VHD_GetSlotBuffer(_slot, VHD_SDI_BT_VIDEO, &buffer.first, &buffer.second)};
     if (!api_success)
     {
         std::cout << "ERROR for " << _name << ": Cannot get slot buffer (" << api_success << ")" << std::endl;
-        return false;
+        return {};
     } 
-    return true;
+
+    return buffer;
 }
 
 Deltacast::RxStream::~RxStream()
 {
-    if (_slot != nullptr)
+    if (_slot)
         VHD_UnlockSlotHandle(_slot);
-    if (stream_started)
-        VHD_StopStream(*handle());
+    VHD_StopStream(*handle());
 }

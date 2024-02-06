@@ -15,10 +15,13 @@
 
 #pragma once
 
-#include <cstdint>
+#include "VideoMasterAPIHelper/enum_to_string.hpp"
 
 #include "VideoMasterHD_Core.h"
 #include "VideoMasterHD_Sdi.h"
+
+#include <cstdint>
+#include <iostream>
 
 namespace Deltacast
 {
@@ -34,6 +37,16 @@ namespace Deltacast
             && left.clock_divisor == right.clock_divisor
             && left.interface == right.interface;
         }
+
+        friend std::ostream& operator<<(std::ostream& os, const SignalInformation& signal_info)
+        {
+            os << "Signal information:" << std::endl;
+            os << "\t" << "video standard: " << Deltacast::Helper::enum_to_string(signal_info.video_standard) << std::endl;
+            os << "\t" << "clock divisor: " << Deltacast::Helper::enum_to_string(signal_info.clock_divisor) << std::endl;
+            os << "\t" << "interface: " << Deltacast::Helper::enum_to_string(signal_info.interface) << std::endl;
+
+            return os;
+        }
     };
 
     struct DecodedSignalInformation
@@ -42,6 +55,17 @@ namespace Deltacast
         uint32_t height;
         bool progressive;
         double framerate;
+
+        friend std::ostream& operator<<(std::ostream& os, const DecodedSignalInformation& decoded_signal_info)
+        {
+            os << "Decoded signal information:" << std::endl;
+            os << "\t" << "width: " << decoded_signal_info.width << std::endl;
+            os << "\t" << "height: " << decoded_signal_info.height << std::endl;
+            os << "\t" << "progressive: " << (decoded_signal_info.progressive ? "true" : "false") << std::endl;
+            os << "\t" << "framerate: " << decoded_signal_info.framerate << std::endl;
+
+            return os;
+        }
     };
 
     DecodedSignalInformation decode(const SignalInformation& signal_information);

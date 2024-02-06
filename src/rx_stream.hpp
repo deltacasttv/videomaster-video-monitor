@@ -21,22 +21,23 @@
 
 #include "VideoMasterAPIHelper/api_success.hpp"
 
+#include <optional>
+#include <utility>
+
 namespace Deltacast
 {
     class RxStream
     {
     public:
-
         RxStream(Device& device, std::string name, int channel_index);
         ~RxStream();
 
         bool configure(SignalInformation signal_info);
         bool start();
         bool stop();
-
         bool lock_slot();
         bool unlock_slot();
-        bool get_buffer(BYTE*& buffer, ULONG& buffer_size);
+        std::optional<std::pair<BYTE* /*buffer*/, ULONG /*buffer_size*/>> get_buffer();
         Helper::StreamHandle& handle() { return *_stream_handle; }
 
     private:
@@ -44,10 +45,7 @@ namespace Deltacast
         int _channel_index;
         std::string _name;
         std::unique_ptr<Helper::StreamHandle> _stream_handle;
-        bool stream_started = false;
 
         HANDLE _slot = nullptr;
-        BYTE *buffer = nullptr;
-        ULONG buffer_size = 0;
     };
 }
