@@ -1,3 +1,5 @@
+.vscode
+
 # Prerequisites
 *.d
 
@@ -30,3 +32,21 @@
 *.exe
 *.out
 *.app
+
+!deps/api_helper/.gitignore
+deps
+
+# conan stuffs
+conan.lock
+conanbuildinfo.txt
+conaninfo.txt
+graph_info.json
+Findglfw3.cmake
+Findopengl_system.cmake
+
+# pipenv
+Pipfile
+Pipfile.lock
+
+src/version.h
+build
