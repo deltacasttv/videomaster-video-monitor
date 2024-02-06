@@ -14,39 +14,31 @@ Retrieve dependencies with Conan (optional)
 
 To use Conan 1.x to retrieve the dependencies, create the `modules`` directory and use the install command:
 
-mkdir /path/to/modules
-cd /path/to/modules
-conan install /path/to/video-viewer -b missing -g cmake_find_package
+    mkdir /path/to/modules
+    cd /path/to/modules
+    conan install /path/to/video-viewer -b missing -g cmake_find_package
 
-# VideoMaster SDK
+## VideoMaster SDK
 
-The VideoMaster SDK is required to build the application and the following environment variables must be set:
-
-    VIDEOMASTERHD_INCLUDE_DIRS: path to the VideoMaster SDK include directory
-    VIDEOMASTERHD_LIBRARIES: path to the VideoMaster SDK library directory
-
-Building with CMake
+The VideoMaster SDK is required to build the application. You must place the SDK in the folder `deps/VideoMaster`.
 
 If you used Conan to retrieve your dependencies, you can use the following commands to build the project:
 
-cd /path/to/video-viewer
-cmake -S . -B build -DCMAKE_MODULE_PATH:PATH=/path/to/modules
-cmake --build build
+    cmake -S . -B build -DCMAKE_MODULE_PATH:PATH=/path/to/modules
+    cmake --build build
 
 # How to use
 
 All relevant information regarding the application can be found by running the application with the --help option:
 
-./VideoMasterInputViewer --help
+    ./VideoMasterInputViewer --help
 
-For example, to run the application with the default settings, simply run:
+For example, to run the application with the default settings (same as `--device 0 --input 0`), simply run:
 
-./VideoMasterInputViewer
+    ./VideoMasterInputViewer
 
 To select the device and connector indexes to use
 
-./VideoMasterInputViewer -d 0 -i 0
+    ./VideoMasterInputViewer --device 0 --input 0
 
 Use the device of indexe 0 and the reception connector of indexe 0.
-
-
