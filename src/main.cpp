@@ -97,8 +97,7 @@ int main(int argc, char** argv)
             return -1;
         
         Deltacast::SignalInformation detected_signal_info;
-        BYTE* buffer;
-        ULONG buffer_size;
+
         // starts the get and set frame loop
         while (!shared_resources.stop_is_requested && !shared_resources.incoming_signal_changed)
         {

@@ -20,7 +20,15 @@ To use Conan 1.x to retrieve the dependencies, create the `modules`` directory a
 
 ## VideoMaster SDK
 
-The VideoMaster SDK is required to build the application. You must place the SDK in the folder `deps/VideoMaster`.
+The VideoMaster SDK is required to build the application.
+
+### Windows
+
+After installing the SDK according to the official documentation, you shall place the `Include` and `Library` folders in a new folder `deps/VideoMaster`.
+
+### Linux
+
+After installing the SDK according to the official documentation, the libs and headers should be found without further steps needed.
 
 ## Building with CMake
 
