@@ -2,6 +2,14 @@
 
 Application that displays the content of an input stream captured by a Deltacast.TV device, interfaced with the VideoMaster SDK.
 
+An SDI device is currently the only valid type of devices for this application.
+
+OS Support:
+- Windows
+- Linux
+
+See https://www.deltacast.tv for more video products.
+
 # How to build
 
 VideoViewer requires some dependencies to be installed on the system:
