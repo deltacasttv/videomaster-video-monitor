@@ -1,6 +1,5 @@
 #include "version.h"
 #include "device.hpp"
-#include "signal_information.hpp"
 #include "shared_resources.hpp"
 #include "rx_renderer.hpp"
 #include "rx_stream.hpp"
@@ -50,6 +49,8 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    std::cout << *device << std::endl;
+
     while (!shared_resources.stop_is_requested)
     {
         shared_resources.reset();
@@ -59,23 +60,6 @@ int main(int argc, char** argv)
             std::cout << "Error waiting for incoming signal" << std::endl;
             return -1;
         }
-        std::cout << "Getting incoming signal information" << std::endl;
-
-        shared_resources.signal_info = device->get_incoming_signal_information(rx_stream_id);
-        std::cout << shared_resources.signal_info << std::endl;
-
-        Deltacast::DecodedSignalInformation decoded_signal_info = Deltacast::decode(shared_resources.signal_info);
-        std::cout  << decoded_signal_info << std::endl;
-
-        auto window_refresh_interval = 10ms;
-        RxRenderer renderer("Live Content", decoded_signal_info.width / 2,
-                            decoded_signal_info.height / 2, window_refresh_interval.count(),
-                            shared_resources.stop_is_requested);
-        std::cout << "Initializing live content rendering window" << std::endl;
-        // starts the rendering thread
-        renderer.init(decoded_signal_info.width, decoded_signal_info.height, Deltacast::VideoViewer::InputFormat::ycbcr_422_8);
-
-        std::cout << std::endl;
 
         std::cout << "Opening RX stream " << rx_stream_id << "" << std::endl;
         std::unique_ptr<Deltacast::RxStream> rx_stream;
@@ -90,28 +74,40 @@ int main(int argc, char** argv)
             return -1;
         }
 
-        std::cout << "Configuring and starting RX stream" << std::endl;
-        if (!rx_stream->configure(shared_resources.signal_info))
+        std::cout << "Configuring RX stream" << std::endl;
+        if (!rx_stream->configure(shared_resources.sdi_video_info))
             return -1;
+
+        std::cout << "Getting incoming signal information" << std::endl;
+        auto current_video_format = shared_resources.sdi_video_info.get_video_format(rx_stream->handle()).value();
+        std::cout << current_video_format << std::endl;
+
+        auto window_refresh_interval = 10ms;
+        RxRenderer renderer("Live Content", current_video_format.width / 2,
+                            current_video_format.height / 2, window_refresh_interval.count(),
+                            shared_resources.stop_is_requested);
+        std::cout << "Initializing live content rendering window" << std::endl;
+        // starts the rendering thread
+        renderer.init(current_video_format.width, current_video_format.height, Deltacast::VideoViewer::InputFormat::ycbcr_422_8);
+
+        std::cout << std::endl;
+
+        std::cout << "Starting RX stream" << std::endl;
         if (!rx_stream->start())
             return -1;
         
-        Deltacast::SignalInformation detected_signal_info;
-
         // starts the get and set frame loop
         while (!shared_resources.stop_is_requested && !shared_resources.incoming_signal_changed)
         {
             // the incoming signal might have changed
-            try
-            {
-                detected_signal_info = device->get_incoming_signal_information(rx_stream_id);
-            }
-            catch(const std::exception& e)
+            if (!device->wait_for_incoming_signal(rx_stream_id, shared_resources.stop_is_requested))
             {
                 std::this_thread::sleep_for(100ms);
                 continue;
             }
-            if (!(detected_signal_info == shared_resources.signal_info))
+            
+            auto detected_video_format = shared_resources.sdi_video_info.get_video_format(rx_stream->handle()).value();
+            if (detected_video_format != current_video_format)
             {
                 shared_resources.incoming_signal_changed = true;
                 continue;
@@ -128,6 +124,8 @@ int main(int argc, char** argv)
 
             if (!rx_stream->unlock_slot())
                 return -1;
+
+            std::cout << "\rSlot count: " << rx_stream->slot_count() << " (dropped " << rx_stream->dropped_slot_count() << " frames)          ";
         }
     }
     return 0;

@@ -9,15 +9,10 @@ function(git_version _var)
 			OUTPUT_STRIP_TRAILING_WHITESPACE)
 		
 		if(ret)
-			set(${_var}
-			"0.0.0"
-			PARENT_SCOPE)
+			set(${_var} "0.0.0" PARENT_SCOPE)
 		else()
-			set(${_var}
-			"${out}"
-			PARENT_SCOPE)
+			set(${_var} "${out}" PARENT_SCOPE)
 		endif()
-		 
 	endif()
 endfunction()
 

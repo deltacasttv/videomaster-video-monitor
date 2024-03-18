@@ -15,9 +15,8 @@
 
 #pragma once
 
-#include "signal_information.hpp"
-
 #include "VideoMasterHD_Core.h"
+#include <VideoMasterAPIHelper/VideoInformation/sdi.hpp>
 
 #include <algorithm>
 #include <atomic>
@@ -28,9 +27,8 @@ namespace Deltacast
     {
         std::atomic_bool stop_is_requested{false};
         std::atomic_bool incoming_signal_changed{false};
-        SignalInformation signal_info;
+        Helper::SdiVideoInformation sdi_video_info;
 
         void reset();
     };
-
 }

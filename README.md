@@ -1,8 +1,8 @@
 # VideoMaster input viewer
 
-Application that displays the content of an input stream captured by a Deltacast.TV device, interfaced with the VideoMaster SDK.
+Application that displays the content of an input stream captured by a DELTACAST device, interfaced with the VideoMaster SDK.
 
-An SDI device is currently the only valid type of devices for this application.
+An SDI device is currently the only valid type of device for this application.
 
 OS Support:
 - Windows
@@ -30,13 +30,7 @@ To use Conan 1.x to retrieve the dependencies, create the `modules`` directory a
 
 The VideoMaster SDK is required to build the application.
 
-### Windows
-
-After installing the SDK according to the official documentation, you shall place the `Include` and `Library` folders in a new folder `deps/VideoMaster`.
-
-### Linux
-
-After installing the SDK according to the official documentation, the libs and headers should be found without further steps needed.
+After installing the SDK according to the official documentation, the libs and headers should be found without further step needed through the `find_package` command.
 
 ## Building with CMake
 

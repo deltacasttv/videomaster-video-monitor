@@ -48,48 +48,6 @@ const std::unordered_map<uint32_t, VHD_CORE_BOARDPROPERTY> id_to_rx_status_prop 
     {10, VHD_CORE_BP_RX10_STATUS},
     {11, VHD_CORE_BP_RX11_STATUS},
 };
-const std::unordered_map<uint32_t, VHD_SDI_BOARDPROPERTY> id_to_rx_video_standard_prop = {
-    {0, VHD_SDI_BP_RX0_STANDARD},
-    {1, VHD_SDI_BP_RX1_STANDARD},
-    {2, VHD_SDI_BP_RX2_STANDARD},
-    {3, VHD_SDI_BP_RX3_STANDARD},
-    {4, VHD_SDI_BP_RX4_STANDARD},
-    {5, VHD_SDI_BP_RX5_STANDARD},
-    {6, VHD_SDI_BP_RX6_STANDARD},
-    {7, VHD_SDI_BP_RX7_STANDARD},
-    {8, VHD_SDI_BP_RX8_STANDARD},
-    {9, VHD_SDI_BP_RX9_STANDARD},
-    {10, VHD_SDI_BP_RX10_STANDARD},
-    {11, VHD_SDI_BP_RX11_STANDARD},
-};
-const std::unordered_map<uint32_t, VHD_SDI_BOARDPROPERTY> id_to_rx_clock_divisor_prop = {
-    {0, VHD_SDI_BP_RX0_CLOCK_DIV},
-    {1, VHD_SDI_BP_RX1_CLOCK_DIV},
-    {2, VHD_SDI_BP_RX2_CLOCK_DIV},
-    {3, VHD_SDI_BP_RX3_CLOCK_DIV},
-    {4, VHD_SDI_BP_RX4_CLOCK_DIV},
-    {5, VHD_SDI_BP_RX5_CLOCK_DIV},
-    {6, VHD_SDI_BP_RX6_CLOCK_DIV},
-    {7, VHD_SDI_BP_RX7_CLOCK_DIV},
-    {8, VHD_SDI_BP_RX8_CLOCK_DIV},
-    {9, VHD_SDI_BP_RX9_CLOCK_DIV},
-    {10, VHD_SDI_BP_RX10_CLOCK_DIV},
-    {11, VHD_SDI_BP_RX11_CLOCK_DIV},
-};
-const std::unordered_map<uint32_t, VHD_SDI_BOARDPROPERTY> id_to_rx_interface_prop = {
-    {0, VHD_SDI_BP_RX0_INTERFACE},
-    {1, VHD_SDI_BP_RX1_INTERFACE},
-    {2, VHD_SDI_BP_RX2_INTERFACE},
-    {3, VHD_SDI_BP_RX3_INTERFACE},
-    {4, VHD_SDI_BP_RX4_INTERFACE},
-    {5, VHD_SDI_BP_RX5_INTERFACE},
-    {6, VHD_SDI_BP_RX6_INTERFACE},
-    {7, VHD_SDI_BP_RX7_INTERFACE},
-    {8, VHD_SDI_BP_RX8_INTERFACE},
-    {9, VHD_SDI_BP_RX9_INTERFACE},
-    {10, VHD_SDI_BP_RX10_INTERFACE},
-    {11, VHD_SDI_BP_RX11_INTERFACE},
-};
 
 Deltacast::Device::~Device()
 {
@@ -156,34 +114,12 @@ bool Deltacast::Device::wait_for_incoming_signal(int rx_index, const std::atomic
     return false;
 }
 
-Deltacast::SignalInformation Deltacast::Device::get_incoming_signal_information(int rx_index)
-{
-    if ((id_to_rx_video_standard_prop.find(rx_index) == id_to_rx_video_standard_prop.end())
-        || (id_to_rx_clock_divisor_prop.find(rx_index) == id_to_rx_clock_divisor_prop.end())
-        || (id_to_rx_interface_prop.find(rx_index) == id_to_rx_interface_prop.end()))
-        return {};
-
-    SignalInformation signal_information;
-
-    ApiSuccess api_success;
-    if (!(api_success = ApiSuccess{VHD_GetBoardProperty(*handle(), id_to_rx_video_standard_prop.at(rx_index), (ULONG*)&signal_information.video_standard)})
-        || !(api_success = ApiSuccess{VHD_GetBoardProperty(*handle(), id_to_rx_clock_divisor_prop.at(rx_index), (ULONG*)&signal_information.clock_divisor)})
-        || !(api_success = ApiSuccess{VHD_GetBoardProperty(*handle(), id_to_rx_interface_prop.at(rx_index), (ULONG*)&signal_information.interface)}))
-    {
-        std::cout << "ERROR: Cannot get incoming signal information (" << api_success << ")" << std::endl;
-        throw std::runtime_error("Cannot get incoming signal information");
-    }
-
-    return signal_information;
-}
-
 namespace Deltacast
 {
     std::ostream& operator<<(std::ostream& os, const Device& device)
     {
         ULONG driver_version = 0, firmware_version, number_of_rx_channels, number_of_tx_channels;
 
-        VHD_GetBoardProperty(**(device._device_handle), VHD_CORE_BP_DRIVER_VERSION, &driver_version);
         VHD_GetBoardProperty(**(device._device_handle), VHD_CORE_BP_FIRMWARE_VERSION, &firmware_version);
         VHD_GetBoardProperty(**(device._device_handle), VHD_CORE_BP_NB_RXCHANNELS, &number_of_rx_channels);
         VHD_GetBoardProperty(**(device._device_handle), VHD_CORE_BP_NB_TXCHANNELS, &number_of_tx_channels);
@@ -193,7 +129,7 @@ namespace Deltacast
 
         os << "  Board " << device._device_index << ":  [ " << VHD_GetBoardModel(device._device_index) << " ]" << "\n";
         os << "    - PCIe Id string: " << pcie_id_string << "\n";
-        os << "    - Driver v" << ((driver_version & 0xFF000000) >> 24) << "." << ((driver_version & 0x00FF0000) >> 16) << "." << ((driver_version & 0x0000FF00) >> 8) << "." << ((driver_version & 0x000000FF) >> 0) << "\n";
+        os << "    - Driver " << VHD_GetDriverStringVersion(**(device._device_handle)) << "\n";
 
         os << std::hex;
 
