@@ -103,12 +103,12 @@ bool Deltacast::Device::wait_for_incoming_signal(int rx_index, const std::atomic
 
     while (!stop_is_requested.load())
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
         ULONG status = VHD_CORE_RXSTS_UNLOCKED;
         auto api_success = ApiSuccess{VHD_GetBoardProperty(*handle(), id_to_rx_status_prop.at(rx_index), &status)};
         if (api_success && !(status & VHD_CORE_RXSTS_UNLOCKED))
             return true;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
     return false;

@@ -127,6 +127,7 @@ int main(int argc, char** argv)
 
             std::cout << "\rSlot count: " << rx_stream->slot_count() << " (dropped " << rx_stream->dropped_slot_count() << " frames)          ";
         }
+        std::cout << std::endl;
     }
     return 0;
 }
