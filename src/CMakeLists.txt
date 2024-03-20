@@ -31,7 +31,7 @@ add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
 FetchContent_Declare(
   video-viewer
   GIT_REPOSITORY    https://github.com/deltacasttv/video-viewer.git
-  GIT_TAG           fix/check_macros_gcc
+  GIT_TAG           1.1.2
   SOURCE_DIR        "${CMAKE_SOURCE_DIR}/deps/video-viewer"
 )
 
@@ -45,7 +45,7 @@ FetchContent_Declare(
 FetchContent_Declare(
     VideoMasterAPIHelper
     GIT_REPOSITORY  https://github.com/deltacasttv/videomaster-api-helper.git
-    GIT_TAG         1.0.0
+    GIT_TAG         feature/find-package-videomaster
     SOURCE_DIR      "${CMAKE_SOURCE_DIR}/deps/api_helper"
 )
 
@@ -54,8 +54,8 @@ FetchContent_MakeAvailable(VideoMasterAPIHelper)
 target_link_libraries(${PROJECT_NAME} PRIVATE VideoMasterAPIHelper)
 
 # VideoMaster SDK
-find_package(VideoMaster REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE VideoMaster::VideoMaster)
+find_package(VideoMasterHD REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE VideoMasterHD::Core)
 
 # video-viewer
 FetchContent_MakeAvailable(video-viewer)
