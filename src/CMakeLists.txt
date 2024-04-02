@@ -30,7 +30,7 @@ add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
 FetchContent_Declare(
   video-viewer
   GIT_REPOSITORY    https://github.com/deltacasttv/video-viewer.git
-  GIT_TAG           fix/check_macros_gcc
+  GIT_TAG           1.1.2
   SOURCE_DIR        "${CMAKE_SOURCE_DIR}/deps/video-viewer"
 )
 
@@ -44,7 +44,7 @@ FetchContent_Declare(
 FetchContent_Declare(
     VideoMasterAPIHelper
     GIT_REPOSITORY  https://github.com/deltacasttv/videomaster-api-helper.git
-    GIT_TAG         feature/find-package-videomaster
+    GIT_TAG         1.2.0
     SOURCE_DIR      "${CMAKE_SOURCE_DIR}/deps/api_helper"
 )
 
