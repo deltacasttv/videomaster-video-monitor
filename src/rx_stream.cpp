@@ -50,12 +50,11 @@ Deltacast::RxStream::RxStream(Device& device, std::string name, int channel_inde
         throw std::runtime_error("Couldn't create a stream handle for channel index " + std::to_string(channel_index)); 
 }
 
-bool Deltacast::RxStream::configure(SignalInformation signal_info)
+bool Deltacast::RxStream::configure(Helper::SdiVideoInformation& sdi_video_info)
 {
     Deltacast::Helper::ApiSuccess api_success;
     if (!(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_TRANSFER_SCHEME, VHD_TRANSFER_SLAVED))
-        || !(api_success = VHD_SetStreamProperty(*handle(), VHD_SDI_SP_VIDEO_STANDARD, signal_info.video_standard))
-        || !(api_success = VHD_SetStreamProperty(*handle(), VHD_SDI_SP_INTERFACE, signal_info.interface)))
+        || !(api_success = sdi_video_info.set_stream_properties_values(handle(), sdi_video_info.get_stream_properties_values(handle())).value()))
     {
         std::cout << "ERROR for " << _name << ": Cannot configure stream (" << api_success << ")" << std::endl;
         return false;
@@ -139,6 +138,20 @@ std::optional<std::pair<BYTE* /*buffer*/, ULONG /*buffer_size*/>> Deltacast::RxS
     } 
 
     return buffer;
+}
+
+ULONG Deltacast::RxStream::slot_count()
+{
+    ULONG count = 0;
+    VHD_GetStreamProperty(*handle(), VHD_CORE_SP_SLOTS_COUNT, &count);
+    return count;
+}
+
+ULONG Deltacast::RxStream::dropped_slot_count()
+{
+    ULONG count = 0;
+    VHD_GetStreamProperty(*handle(), VHD_CORE_SP_SLOTS_DROPPED, &count);
+    return count;
 }
 
 Deltacast::RxStream::~RxStream()

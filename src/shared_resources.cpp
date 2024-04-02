@@ -19,5 +19,5 @@ void Deltacast::SharedResources::reset()
 {
     stop_is_requested = false;
     incoming_signal_changed = false;
-    signal_info = {};
+    sdi_video_info = {};
 }

@@ -22,7 +22,6 @@ set(${PROJECT_NAME}_SOURCES
     ${CMAKE_SOURCE_DIR}/src/rx_renderer.cpp
     ${CMAKE_SOURCE_DIR}/src/rx_stream.cpp
     ${CMAKE_SOURCE_DIR}/src/shared_resources.cpp
-    ${CMAKE_SOURCE_DIR}/src/signal_information.cpp
 )
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
@@ -45,7 +44,7 @@ FetchContent_Declare(
 FetchContent_Declare(
     VideoMasterAPIHelper
     GIT_REPOSITORY  https://github.com/deltacasttv/videomaster-api-helper.git
-    GIT_TAG         1.0.0
+    GIT_TAG         feature/find-package-videomaster
     SOURCE_DIR      "${CMAKE_SOURCE_DIR}/deps/api_helper"
 )
 
@@ -54,8 +53,8 @@ FetchContent_MakeAvailable(VideoMasterAPIHelper)
 target_link_libraries(${PROJECT_NAME} PRIVATE VideoMasterAPIHelper)
 
 # VideoMaster SDK
-find_package(VideoMaster REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE VideoMaster::VideoMaster)
+find_package(VideoMasterHD 6.25 REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE VideoMasterHD::Core)
 
 # video-viewer
 FetchContent_MakeAvailable(video-viewer)

@@ -15,8 +15,6 @@
 
 #pragma once
 
-#include "signal_information.hpp"
-
 #include "VideoMasterAPIHelper/handle_manager.hpp"
 
 #include "VideoMasterHD_Core.h"
@@ -49,7 +47,6 @@ namespace Deltacast
         void enable_loopback(int index);
         void disable_loopback(int index);
         bool wait_for_incoming_signal(int rx_index, const std::atomic_bool& stop_is_requested);
-        SignalInformation get_incoming_signal_information(int rx_index);
 
         int& index() { return _device_index; }
         Helper::BoardHandle& handle() { return *_device_handle; }

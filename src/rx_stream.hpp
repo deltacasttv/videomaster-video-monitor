@@ -17,7 +17,6 @@
 
 #include "device.hpp"
 #include "shared_resources.hpp"
-#include "signal_information.hpp"
 
 #include "VideoMasterAPIHelper/api_success.hpp"
 
@@ -32,12 +31,14 @@ namespace Deltacast
         RxStream(Device& device, std::string name, int channel_index);
         ~RxStream();
 
-        bool configure(SignalInformation signal_info);
+        bool configure(Helper::SdiVideoInformation& sdi_video_info);
         bool start();
         bool stop();
         bool lock_slot();
         bool unlock_slot();
         std::optional<std::pair<BYTE* /*buffer*/, ULONG /*buffer_size*/>> get_buffer();
+        ULONG slot_count();
+        ULONG dropped_slot_count();
         Helper::StreamHandle& handle() { return *_stream_handle; }
 
     private:
