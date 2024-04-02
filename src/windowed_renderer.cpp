@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-#include "rx_renderer.hpp"
+#include "windowed_renderer.hpp"
 
 #include <iostream>
 #include <cstring>
 
-RxRenderer::RxRenderer(std::string window_title, int window_width, int window_height, int framerate_ms, std::atomic_bool& stop_is_requested)
+WindowedRenderer::WindowedRenderer(std::string window_title, int window_width, int window_height, int framerate_ms, std::atomic_bool& stop_is_requested)
     : _window_title(window_title)
     , _window_width(window_width)
     , _window_height(window_height)
@@ -27,19 +27,19 @@ RxRenderer::RxRenderer(std::string window_title, int window_width, int window_he
 {
 }
 
-RxRenderer::~RxRenderer()
+WindowedRenderer::~WindowedRenderer()
 {
     stop();
 }
 
-bool RxRenderer::init(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format)
+bool WindowedRenderer::init(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format)
 {
-    _monitor_thread = std::thread(&RxRenderer::monitor, this, image_width, image_height, input_format);
+    _monitor_thread = std::thread(&WindowedRenderer::monitor, this, image_width, image_height, input_format);
 
     return true;
 }
 
-bool RxRenderer::monitor(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format)
+bool WindowedRenderer::monitor(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format)
 {
     if (!_monitor.init(_window_width, _window_height, _window_title.c_str(), image_width, image_height, input_format))
     {
@@ -53,7 +53,7 @@ bool RxRenderer::monitor(int image_width, int image_height, Deltacast::VideoView
     return true;
 }
 
-bool RxRenderer::stop()
+bool WindowedRenderer::stop()
 {
     _monitor.stop();
     if (_monitor_thread.joinable())
@@ -62,7 +62,7 @@ bool RxRenderer::stop()
     return true;
 }
 
-void RxRenderer::render_buffer(BYTE* buffer, ULONG buffer_size)
+void WindowedRenderer::render_buffer(BYTE* buffer, ULONG buffer_size)
 {
     uint8_t* monitor_data = nullptr;
     uint64_t monitor_data_size = 0;

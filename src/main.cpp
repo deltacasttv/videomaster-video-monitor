@@ -16,8 +16,8 @@
 #include "version.h"
 #include "device.hpp"
 #include "shared_resources.hpp"
-#include "rx_renderer.hpp"
 #include "rx_stream.hpp"
+#include "windowed_renderer.hpp"
 
 #include "VideoMasterAPIHelper/api.hpp"
 #include "VideoMasterAPIHelper/resource_manager.hpp"
@@ -98,7 +98,7 @@ int main(int argc, char** argv)
         std::cout << current_video_format << std::endl;
 
         auto window_refresh_interval = 10ms;
-        RxRenderer renderer("Live Content", current_video_format.width / 2,
+        WindowedRenderer renderer("Live Content", current_video_format.width / 2,
                             current_video_format.height / 2, window_refresh_interval.count(),
                             shared_resources.stop_is_requested);
         std::cout << "Initializing live content rendering window" << std::endl;

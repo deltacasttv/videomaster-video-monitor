@@ -19,9 +19,9 @@ endif()
 set(${PROJECT_NAME}_SOURCES
     ${CMAKE_SOURCE_DIR}/src/main.cpp
     ${CMAKE_SOURCE_DIR}/src/device.cpp
-    ${CMAKE_SOURCE_DIR}/src/rx_renderer.cpp
     ${CMAKE_SOURCE_DIR}/src/rx_stream.cpp
     ${CMAKE_SOURCE_DIR}/src/shared_resources.cpp
+    ${CMAKE_SOURCE_DIR}/src/windowed_renderer.cpp
 )
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
