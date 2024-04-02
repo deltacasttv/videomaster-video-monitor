@@ -23,16 +23,16 @@
 #include <thread>
 #include <atomic>
 
-class RxRenderer
+class WindowedRenderer
 {
 public:
-    RxRenderer(std::string window_title, int window_width, int window_height, int framerate_ms, std::atomic_bool& stop_is_requested);
-    ~RxRenderer();
+    WindowedRenderer(std::string window_title, int window_width, int window_height, int framerate_ms, std::atomic_bool& stop_is_requested);
+    ~WindowedRenderer();
     
-    RxRenderer(const RxRenderer&) = delete;
-    RxRenderer& operator=(const RxRenderer&) = delete;
-    RxRenderer(RxRenderer&&) = delete;
-    RxRenderer& operator=(RxRenderer&&) = delete;
+    WindowedRenderer(const WindowedRenderer&) = delete;
+    WindowedRenderer& operator=(const WindowedRenderer&) = delete;
+    WindowedRenderer(WindowedRenderer&&) = delete;
+    WindowedRenderer& operator=(WindowedRenderer&&) = delete;
 
     bool init(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format);
     void render_buffer(BYTE* buffer, ULONG buffer_size);

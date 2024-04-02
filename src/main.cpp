@@ -1,8 +1,23 @@
+/*
+ * SPDX-FileCopyrightText: Copyright (c) DELTACAST.TV. All rights reserved.
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at * * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "version.h"
 #include "device.hpp"
 #include "shared_resources.hpp"
-#include "rx_renderer.hpp"
 #include "rx_stream.hpp"
+#include "windowed_renderer.hpp"
 
 #include "VideoMasterAPIHelper/api.hpp"
 #include "VideoMasterAPIHelper/resource_manager.hpp"
@@ -83,11 +98,10 @@ int main(int argc, char** argv)
         std::cout << current_video_format << std::endl;
 
         auto window_refresh_interval = 10ms;
-        RxRenderer renderer("Live Content", current_video_format.width / 2,
+        WindowedRenderer renderer("Live Content", current_video_format.width / 2,
                             current_video_format.height / 2, window_refresh_interval.count(),
                             shared_resources.stop_is_requested);
         std::cout << "Initializing live content rendering window" << std::endl;
-        // starts the rendering thread
         renderer.init(current_video_format.width, current_video_format.height, Deltacast::VideoViewer::InputFormat::ycbcr_422_8);
 
         std::cout << std::endl;
@@ -96,10 +110,8 @@ int main(int argc, char** argv)
         if (!rx_stream->start())
             return -1;
         
-        // starts the get and set frame loop
         while (!shared_resources.stop_is_requested && !shared_resources.incoming_signal_changed)
         {
-            // the incoming signal might have changed
             if (!device->wait_for_incoming_signal(rx_stream_id, shared_resources.stop_is_requested))
             {
                 std::this_thread::sleep_for(100ms);
