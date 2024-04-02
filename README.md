@@ -1,4 +1,4 @@
-# VideoMaster input viewer
+# VideoMaster video monitor
 
 Application that displays the content of an input stream captured by a DELTACAST device, interfaced with the VideoMaster SDK.
 
