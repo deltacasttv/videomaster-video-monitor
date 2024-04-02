@@ -1,3 +1,12 @@
+# 1.1.0
+
+## Improved
+
+- Update dependency to api-helper
+  - find_package for VideoMaster (requires 6.25)
+  - Abstraction of SDI-specific properties and configuration
+- Cleaning and refactoring for publication 
+
 # 1.0.0
 
 ## Added
