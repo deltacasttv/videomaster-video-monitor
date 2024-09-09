@@ -29,7 +29,7 @@ FetchContent_MakeAvailable(VideoMasterCppApi)
 FetchContent_Declare(
   video-viewer
   GIT_REPOSITORY    https://github.com/deltacasttv/video-viewer.git
-  GIT_TAG           1.1.2
+  GIT_TAG           1.3.0
 )
 FetchContent_MakeAvailable(video-viewer)
 
