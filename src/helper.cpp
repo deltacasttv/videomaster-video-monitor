@@ -84,7 +84,7 @@ namespace Application::Helper
         }
     }
 
-    bool wait_for_input(BoardComponents::RxConnector& rx_connector, const bool& stop_is_requested)
+    bool wait_for_input(BoardComponents::RxConnector& rx_connector, const std::atomic_bool& stop_is_requested)
     {
         while (!stop_is_requested && !rx_connector.signal_present())
             std::this_thread::sleep_for(std::chrono::milliseconds(100));

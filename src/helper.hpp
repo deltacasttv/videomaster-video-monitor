@@ -29,7 +29,7 @@ namespace Application::Helper
     VHD_STREAMTYPE rx_index_to_streamtype(unsigned int rx_index);
     VHD_STREAMTYPE tx_index_to_streamtype(unsigned int tx_index);
 
-    bool wait_for_input(Deltacast::Wrapper::BoardComponents::RxConnector& rx_connector, const bool& stop_is_requested);
+    bool wait_for_input(Deltacast::Wrapper::BoardComponents::RxConnector& rx_connector, const std::atomic_bool& stop_is_requested);
 
     struct SdiSignalInformation
     {
