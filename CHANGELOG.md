@@ -1,3 +1,10 @@
+# Unreleased
+
+## Improved
+
+- Complete refactoring to make use of new VideoMaster C++ Wrapper
+- Update dependency to video-viewer
+
 # 1.1.0
 
 ## Improved
