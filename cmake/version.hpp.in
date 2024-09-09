@@ -15,16 +15,8 @@
 
 #pragma once
 
-#include <algorithm>
-#include <atomic>
+#define VERMAJOR         @CMAKE_PROJECT_VERSION_MAJOR@
+#define VERMINOR         @CMAKE_PROJECT_VERSION_MINOR@
+#define VERPATCH         @CMAKE_PROJECT_VERSION_PATCH@
 
-namespace Deltacast
-{
-    struct SharedResources
-    {
-        std::atomic_bool stop_is_requested{false};
-        std::atomic_bool incoming_signal_changed{false};
-
-        void reset();
-    };
-}
+#define VERSTRING        "@GIT_VERSION@"

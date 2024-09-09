@@ -48,5 +48,5 @@ Findopengl_system.cmake
 Pipfile
 Pipfile.lock
 
-src/version.h
+src/version.hpp
 build
