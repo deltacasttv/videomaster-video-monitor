@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-
 include(cmake/version.cmake)
 git_version(GIT_VERSION)
 set_version(${GIT_VERSION})
@@ -15,3 +12,4 @@ project(
 )
 
 add_subdirectory("src")
+add_subdirectory("deps")

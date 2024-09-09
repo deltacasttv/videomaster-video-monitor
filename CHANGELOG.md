@@ -4,6 +4,7 @@
 
 - Complete refactoring to make use of new VideoMaster C++ Wrapper
 - Update dependency to video-viewer
+- Handle dependencies with conan 2.x and submodule instead of fetch_content
 
 # 1.1.0
 
