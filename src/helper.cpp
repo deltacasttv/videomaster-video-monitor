@@ -16,28 +16,35 @@
 #include "helper.hpp"
 
 #include <thread>
+#include <utility>
 #include <optional>
 #include <VideoMasterCppApi/to_string.hpp>
 #include <VideoMasterCppApi/exception.hpp>
+#include <VideoMasterCppApi/to_string.hpp>
 #include <VideoMasterCppApi/helper/sdi.hpp>
+
+template<class... Ts>
+struct overloaded : Ts... { using Ts::operator()...; };
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
 
 using namespace Deltacast::Wrapper;
 using namespace Deltacast::Wrapper::Helper;
 
 std::ostream& operator<<(std::ostream& os, Board& board)
 {
-    os << "\t" << "Board " << board.index() << ":  [ " << board.name() << " ]" << std::endl;
-    os << "\t" << "\t" << "- " << board.number_of_rx() << " RX / " << board.number_of_tx() << " TX" << std::endl;
-    os << "\t" << "\t" << "- Driver: " << board.driver_version() << std::endl;
-    os << "\t" << "\t" << "- PCIe ID: " << board.pcie_identifier() << std::endl;
+    os << "Board " << board.index() << ":  [ " << board.name() << " ]" << std::endl;
+    os << "\t" << "- " << board.number_of_rx() << " RX / " << board.number_of_tx() << " TX" << std::endl;
+    os << "\t" << "- Driver: " << board.driver_version() << std::endl;
+    os << "\t" << "- PCIe ID: " << board.pcie_identifier() << std::endl;
     os << "\t" << "\t" << "- SN: " << board.serial_number() << std::endl;
     auto [ pcie_bus, number_of_lanes ] = board.pcie();
     os << "\t" << "\t" << "- " << to_pretty_string(pcie_bus) << ", " << number_of_lanes << " lanes" << std::endl;
 
     os << std::hex;
-    os << "\t" << "\t" << "- Firmware: 0x" << board.fpga().version() << std::endl;
-    if (board.has_scp())
-        os << "\t" << "\t" << "- SCP: 0x" << board.scp().version() << std::endl;
+    os << "\t" << "- Firmware: 0x" << board.fpga().version() << std::endl;
+    os << "\t" << "- SCP: 0x" << board.scp().version() << std::endl;
+    os << "\t" << "- ARM: 0x" << board.arm().version() << std::endl;
     os << std::dec;
 
     return os;
@@ -96,13 +103,82 @@ namespace Application::Helper
         return rx_connector.signal_present();
     }
 
-    SdiSignalInformation detect_information(SdiStream& sdi_stream)
+    Streams open_stream(Board& board, VHD_STREAMTYPE stream_type)
     {
-        return { sdi_stream.video_standard(), sdi_stream.clock_divisor(), sdi_stream.interface() };
+        return std::move(board.sdi().open_stream(stream_type, VHD_SDI_STPROC_DISJOINED_VIDEO));
     }
 
-    VideoCharacteristics get_video_characteristics(const SdiSignalInformation& sdi_signal_information)
+    Stream& to_base_stream(Streams& stream)
     {
-        return Sdi::video_standard_to_characteristics(sdi_signal_information.video_standard);
+        return std::visit(overloaded{
+            [](SdiStream& sdi_stream) -> Stream& { return sdi_stream; },
+            [](DvStream& dv_stream) -> Stream& { return dv_stream; }
+        }, stream);
+    }
+
+    void configure_stream(Streams& stream, const SignalInformations& signal_information)
+    {
+        std::visit(overloaded{
+            [&signal_information](SdiStream& sdi_stream)
+            {
+                const SdiSignalInformation& sdi_signal_information = std::get<SdiSignalInformation>(signal_information);
+                sdi_stream.set_video_standard(sdi_signal_information.video_standard);
+                sdi_stream.set_interface(sdi_signal_information.video_interface);
+            },
+            [&signal_information](DvStream& dv_stream)
+            {
+                const DvSignalInformation& dv_signal_information = std::get<DvSignalInformation>(signal_information);
+                dv_stream.set_active_width(dv_signal_information.width);
+                dv_stream.set_active_height(dv_signal_information.height);
+                dv_signal_information.progressive ? dv_stream.set_progressive() : dv_stream.set_interlaced();
+                dv_stream.set_frame_rate(dv_signal_information.framerate);
+            }
+        }, stream);
+    }
+
+    void print_information(const SignalInformations& signal_information, const std::string& prefix /*= ""*/)
+    {
+        std::visit(overloaded{
+            [&prefix](const SdiSignalInformation& sdi_signal_info)
+            {
+                std::cout << prefix << "Video standard: " << to_pretty_string(sdi_signal_info.video_standard) << std::endl;
+                std::cout << prefix << "Clock divisor: " << to_pretty_string(sdi_signal_info.clock_divisor) << std::endl;
+                std::cout << prefix << "Interface: " << to_pretty_string(sdi_signal_info.video_interface) << std::endl;
+            },
+            [&prefix](const DvSignalInformation& dv_signal_info)
+            {
+                std::cout << prefix << dv_signal_info.width << "x" << dv_signal_info.height 
+                                    << (dv_signal_info.progressive ? "p" : "i") 
+                                    << dv_signal_info.framerate << std::endl;
+            }
+        }, signal_information);
+    }
+
+    SignalInformations detect_information(Streams& stream)
+    {
+        return std::visit(overloaded{
+            [](SdiStream& sdi_stream) -> SignalInformations
+            {
+                return SdiSignalInformation{sdi_stream.video_standard(), sdi_stream.clock_divisor(), sdi_stream.interface()};
+            },
+            [](DvStream& dv_stream) -> SignalInformations
+            {
+                return DvSignalInformation{dv_stream.active_width(), dv_stream.active_height(), !dv_stream.interlaced(), dv_stream.frame_rate()};
+            }
+        }, stream);
+    }
+
+    VideoCharacteristics get_video_characteristics(const SignalInformations& signal_information)
+    {
+        return std::visit(overloaded{
+            [](const SdiSignalInformation& sdi_signal_info) -> VideoCharacteristics
+            {
+                return Sdi::video_standard_to_characteristics(sdi_signal_info.video_standard);
+            },
+            [](const DvSignalInformation& dv_signal_info) -> VideoCharacteristics
+            {
+                return { dv_signal_info.width, dv_signal_info.height, !dv_signal_info.progressive, dv_signal_info.framerate };
+            }
+        }, signal_information);
     }
 }

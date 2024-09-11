@@ -15,10 +15,12 @@
 
 #include <iostream>
 #include <atomic>
+#include <variant>
 
 #include <VideoMasterCppApi/helper/video.hpp>
 #include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterCppApi/stream/sdi/sdi_stream.hpp>
+#include <VideoMasterCppApi/stream/dv/dv_stream.hpp>
 
 std::ostream& operator<<(std::ostream& os, Deltacast::Wrapper::Board& board);
 
@@ -32,6 +34,10 @@ namespace Application::Helper
 
     bool wait_for_input(Deltacast::Wrapper::BoardComponents::RxConnector& rx_connector, const std::atomic_bool& stop_is_requested);
 
+    using Streams = std::variant<Deltacast::Wrapper::SdiStream, Deltacast::Wrapper::DvStream>;
+    Streams open_stream(Deltacast::Wrapper::Board& board, VHD_STREAMTYPE stream_type);
+    Deltacast::Wrapper::Stream& to_base_stream(Streams& stream);
+
     struct SdiSignalInformation
     {
         VHD_VIDEOSTANDARD video_standard;
@@ -44,12 +50,29 @@ namespace Application::Helper
                     && clock_divisor == other.clock_divisor 
                     && video_interface == other.video_interface;
         }
-        bool operator!=(const SdiSignalInformation& other) const
-        {
-            return !(*this == other);
-        }
+        bool operator!=(const SdiSignalInformation& other) const { return !(*this == other); }
     };
-    SdiSignalInformation detect_information(Deltacast::Wrapper::SdiStream& sdi_stream);
+    struct DvSignalInformation
+    {
+        unsigned int width;
+        unsigned int height;
+        bool progressive;
+        unsigned int framerate;
 
-    Deltacast::Wrapper::Helper::VideoCharacteristics get_video_characteristics(const SdiSignalInformation& sdi_signal_information);
+        bool operator==(const DvSignalInformation& other) const
+        {
+            return width == other.width 
+                    && height == other.height 
+                    && framerate == other.framerate
+                    && progressive == other.progressive;
+        }
+        bool operator!=(const DvSignalInformation& other) const { return !(*this == other); }
+    };
+    using SignalInformations = std::variant<SdiSignalInformation, DvSignalInformation>;
+
+    void configure_stream(Streams& stream, const SignalInformations& signal_information);
+    void print_information(const SignalInformations& signal_information, const std::string& prefix = "");
+    SignalInformations detect_information(Streams& stream);
+
+    Deltacast::Wrapper::Helper::VideoCharacteristics get_video_characteristics(const SignalInformations& signal_information);
 }
