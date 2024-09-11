@@ -95,6 +95,39 @@ namespace Application::Helper
         }
     }
 
+    VHD_CHANNELTYPE stream_type_to_channel_type(Board& board, VHD_STREAMTYPE stream_type)
+    {
+        switch (stream_type)
+        {
+            case VHD_ST_RX0: return board.rx(0).type();
+            case VHD_ST_RX1: return board.rx(1).type();
+            case VHD_ST_RX2: return board.rx(2).type();
+            case VHD_ST_RX3: return board.rx(3).type();
+            case VHD_ST_RX4: return board.rx(4).type();
+            case VHD_ST_RX5: return board.rx(5).type();
+            case VHD_ST_RX6: return board.rx(6).type();
+            case VHD_ST_RX7: return board.rx(7).type();
+            case VHD_ST_RX8: return board.rx(8).type();
+            case VHD_ST_RX9: return board.rx(9).type();
+            case VHD_ST_RX10: return board.rx(10).type();
+            case VHD_ST_RX11: return board.rx(11).type();
+            case VHD_ST_TX0: return board.tx(0).type();
+            case VHD_ST_TX1: return board.tx(1).type();
+            case VHD_ST_TX2: return board.tx(2).type();
+            case VHD_ST_TX3: return board.tx(3).type();
+            case VHD_ST_TX4: return board.tx(4).type();
+            case VHD_ST_TX5: return board.tx(5).type();
+            case VHD_ST_TX6: return board.tx(6).type();
+            case VHD_ST_TX7: return board.tx(7).type();
+            case VHD_ST_TX8: return board.tx(8).type();
+            case VHD_ST_TX9: return board.tx(9).type();
+            case VHD_ST_TX10: return board.tx(10).type();
+            case VHD_ST_TX11: return board.tx(11).type();
+            default:
+                throw std::invalid_argument("Invalid stream type");
+        }
+    }
+
     bool wait_for_input(BoardComponents::RxConnector& rx_connector, const std::atomic_bool& stop_is_requested)
     {
         while (!stop_is_requested && !rx_connector.signal_present())
@@ -105,7 +138,19 @@ namespace Application::Helper
 
     Streams open_stream(Board& board, VHD_STREAMTYPE stream_type)
     {
-        return std::move(board.sdi().open_stream(stream_type, VHD_SDI_STPROC_DISJOINED_VIDEO));
+        auto channel_type = stream_type_to_channel_type(board, stream_type);
+        switch (channel_type)
+        {
+            case VHD_CHNTYPE_HDSDI:
+            case VHD_CHNTYPE_3GSDI:
+            case VHD_CHNTYPE_12GSDI:
+                return std::move(board.sdi().open_stream(stream_type, VHD_SDI_STPROC_DISJOINED_VIDEO));
+            case VHD_CHNTYPE_HDMI:
+            case VHD_CHNTYPE_DISPLAYPORT:
+                return std::move(board.dv().open_stream(stream_type, VHD_DV_STPROC_DISJOINED_VIDEO));
+            default:
+                throw std::invalid_argument("Invalid channel type");
+        }
     }
 
     Stream& to_base_stream(Streams& stream)
