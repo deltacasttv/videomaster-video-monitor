@@ -14,6 +14,7 @@
  */
 
 #include <iostream>
+#include <atomic>
 
 #include <VideoMasterCppApi/helper/video.hpp>
 #include <VideoMasterCppApi/board/board.hpp>
