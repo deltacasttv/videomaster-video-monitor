@@ -48,6 +48,7 @@ private:
     std::thread _monitor_thread;
 
     std::atomic_bool& _should_stop;
+    std::atomic_bool _monitor_ready;
 
     bool monitor(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format);
 };
