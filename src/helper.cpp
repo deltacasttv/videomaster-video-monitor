@@ -177,6 +177,7 @@ namespace Application::Helper
                 dv_stream.set_active_height(dv_signal_information.height);
                 dv_signal_information.progressive ? dv_stream.set_progressive() : dv_stream.set_interlaced();
                 dv_stream.set_frame_rate(dv_signal_information.framerate);
+                dv_stream.set_cable_color_space(dv_signal_information.cable_color_space);
             }
         }, stream);
     }
@@ -195,6 +196,8 @@ namespace Application::Helper
                 std::cout << prefix << dv_signal_info.width << "x" << dv_signal_info.height 
                                     << (dv_signal_info.progressive ? "p" : "i") 
                                     << dv_signal_info.framerate << std::endl;
+                std::cout << prefix << to_pretty_string(dv_signal_info.cable_color_space) << std::endl;
+                std::cout << prefix << to_pretty_string(dv_signal_info.cable_sampling) << std::endl;
             }
         }, signal_information);
     }
@@ -208,7 +211,8 @@ namespace Application::Helper
             },
             [](DvStream& dv_stream) -> SignalInformations
             {
-                return DvSignalInformation{dv_stream.active_width(), dv_stream.active_height(), !dv_stream.interlaced(), dv_stream.frame_rate()};
+                return DvSignalInformation{dv_stream.active_width(), dv_stream.active_height(), !dv_stream.interlaced(), dv_stream.frame_rate()
+                                            , dv_stream.cable_color_space(), dv_stream.cable_sampling()};
             }
         }, stream);
     }

@@ -58,13 +58,17 @@ namespace Application::Helper
         unsigned int height;
         bool progressive;
         unsigned int framerate;
+        VHD_DV_CS cable_color_space;
+        VHD_DV_SAMPLING cable_sampling;
 
         bool operator==(const DvSignalInformation& other) const
         {
             return width == other.width 
                     && height == other.height 
                     && framerate == other.framerate
-                    && progressive == other.progressive;
+                    && progressive == other.progressive
+                    && cable_color_space == other.cable_color_space
+                    && cable_sampling == other.cable_sampling;
         }
         bool operator!=(const DvSignalInformation& other) const { return !(*this == other); }
     };
