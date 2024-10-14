@@ -15,16 +15,16 @@ See https://www.deltacast.tv for more video products.
 VideoViewer requires some dependencies to be installed on the system:
 
     cmake v3.20 or higher
-    glfw v3.3.6
+    glfw v3.4.0
     Python 3
 
-Retrieve dependencies with Conan (optional)
+We recommend using Conan 2.x to retrieve those dependencies:
 
-To use Conan 1.x to retrieve the dependencies, create the `modules`` directory and use the install command:
+    conan install . -b missing -pr YOUR_CONAN_PROFILE
 
-    mkdir /path/to/modules
-    cd /path/to/modules
-    conan install /path/to/video-viewer -b missing -g cmake_find_package
+As some dependencies are also retrieved through submodules, you will need to initialize them:
+
+    git submodule update --init --recursive
 
 ## VideoMaster SDK
 
@@ -36,7 +36,7 @@ After installing the SDK according to the official documentation, the libs and h
 
 If you used Conan to retrieve your dependencies, you can use the following commands to build the project:
 
-    cmake -S . -B build -DCMAKE_MODULE_PATH:PATH=/path/to/modules
+    cmake --preset YOUR_CMAKE_PRESET
     cmake --build build
 
 # How to use

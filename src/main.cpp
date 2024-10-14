@@ -13,20 +13,26 @@
  * limitations under the License.
  */
 
-#include "version.h"
-#include "device.hpp"
-#include "shared_resources.hpp"
-#include "rx_stream.hpp"
-#include "windowed_renderer.hpp"
-
-#include "VideoMasterAPIHelper/api.hpp"
-#include "VideoMasterAPIHelper/resource_manager.hpp"
-
 #include <CLI/CLI.hpp>
 
 #include <csignal>
 #include <atomic>
 #include <memory>
+
+#include <VideoMasterCppApi/exception.hpp>
+#include <VideoMasterCppApi/to_string.hpp>
+#include <VideoMasterCppApi/api.hpp>
+#include <VideoMasterCppApi/board/board.hpp>
+#include <VideoMasterCppApi/stream/sdi/sdi_stream.hpp>
+#include <VideoMasterCppApi/slot/sdi/sdi_slot.hpp>
+
+#include "version.hpp"
+#include "helper.hpp"
+#include "shared_resources.hpp"
+#include "windowed_renderer.hpp"
+
+using namespace std::chrono_literals;
+using namespace Deltacast::Wrapper;
 
 Deltacast::SharedResources shared_resources;
 
@@ -37,109 +43,107 @@ void on_close(int /*signal*/)
 
 int main(int argc, char** argv)
 {
-    using namespace std::chrono_literals;
-    int device_id = 0;
-    int rx_stream_id = 0;
-
     CLI::App app{"Identify an incoming signal and display it on the screen"};
     
+    int device_id = 0;
     app.add_option("-d,--device", device_id, "ID of the device to use");
+    int rx_stream_id = 0;
     app.add_option("-i,--input", rx_stream_id, "ID of the input connector to use");
     CLI11_PARSE(app, argc, argv);
 
     signal(SIGINT, on_close);
     
-    std::cout << "InputViewer (" << VERSTRING << ")" << std::endl;
-    
-    std::cout << std::endl;
+    std::cout << "VideoMaster video-monitor (" << VERSTRING << ")" << std::endl;
 
-    std::cout << "VideoMaster: " << Deltacast::Helper::get_api_version() << std::endl;
-    std::cout << "Discovered " << Deltacast::Helper::get_number_of_devices() << " devices" << std::endl;
+    try
+    {    
+        std::cout << "VideoMaster API version: " << api_version() << std::endl;
+        std::cout << "Discovered " << Board::count() << " devices" << std::endl;
 
-    std::cout << "Opening device " << device_id << std::endl;
-    auto device = Deltacast::Device::create(device_id);
-    if (!device)
-    {
-        std::cout << "Error opening the device " << device_id << std::endl;
-        return -1;
-    }
-
-    std::cout << *device << std::endl;
-
-    while (!shared_resources.stop_is_requested)
-    {
-        shared_resources.reset();
-        std::cout << "Waiting for incoming signal" << std::endl;
-        if (!device->wait_for_incoming_signal(rx_stream_id, shared_resources.stop_is_requested))
+        if (device_id >= Board::count())
         {
-            std::cout << "Error waiting for incoming signal" << std::endl;
+            std::cout << "Invalid device ID" << std::endl;
             return -1;
         }
 
-        std::cout << "Opening RX stream " << rx_stream_id << "" << std::endl;
-        std::unique_ptr<Deltacast::RxStream> rx_stream;
+        std::cout << "Opening device " << device_id << std::endl;
+        auto board = Board::open(device_id, [&rx_stream_id](Board& board) { Application::Helper::enable_loopback(board, rx_stream_id); });
 
-        try
+        std::cout << board << std::endl;
+
+        Application::Helper::disable_loopback(board, rx_stream_id);
+
+        while (!shared_resources.stop_is_requested)
         {
-            rx_stream = std::make_unique<Deltacast::RxStream>(*device, "RX Stream", rx_stream_id);
-        }
-        catch (const std::exception& e)
-        {
-            std::cout << e.what() << std::endl;
-            return -1;
-        }
+            shared_resources.reset();
 
-        std::cout << "Configuring RX stream" << std::endl;
-        if (!rx_stream->configure(shared_resources.sdi_video_info))
-            return -1;
+            std::cout << "Opening RX" << rx_stream_id << " stream..." << std::endl;
+            auto rx_stream = board.sdi().open_stream(Application::Helper::rx_index_to_streamtype(rx_stream_id), VHD_SDI_STPROC_DISJOINED_VIDEO);
 
-        std::cout << "Getting incoming signal information" << std::endl;
-        auto current_video_format = shared_resources.sdi_video_info.get_video_format(rx_stream->handle()).value();
-        std::cout << current_video_format << std::endl;
-
-        auto window_refresh_interval = 10ms;
-        WindowedRenderer renderer("Live Content", current_video_format.width / 2,
-                            current_video_format.height / 2, window_refresh_interval.count(),
-                            shared_resources.stop_is_requested);
-        std::cout << "Initializing live content rendering window" << std::endl;
-        renderer.init(current_video_format.width, current_video_format.height, Deltacast::VideoViewer::InputFormat::ycbcr_422_8);
-
-        std::cout << std::endl;
-
-        std::cout << "Starting RX stream" << std::endl;
-        if (!rx_stream->start())
-            return -1;
-        
-        while (!shared_resources.stop_is_requested && !shared_resources.incoming_signal_changed)
-        {
-            if (!device->wait_for_incoming_signal(rx_stream_id, shared_resources.stop_is_requested))
+            std::cout << "Waiting for signal..." << std::endl;
+            if (!Application::Helper::wait_for_input(board.rx(rx_stream_id), shared_resources.stop_is_requested))
             {
-                std::this_thread::sleep_for(100ms);
-                continue;
+                std::cerr << "Application has been stopped before any input was received." << std::endl;
+                return -1;
             }
+
+            auto signal_information = Application::Helper::detect_information(rx_stream);
+            auto video_characteristics = Application::Helper::get_video_characteristics(signal_information);
+            std::cout << "Detected:" << std::endl;
+            std::cout << "\t" << "Video standard: " << to_pretty_string(signal_information.video_standard) << std::endl;
+            std::cout << "\t" << "Clock divisor: " << to_pretty_string(signal_information.clock_divisor) << std::endl;
+            std::cout << "\t" << "Interface: " << to_pretty_string(signal_information.video_interface) << std::endl;
+
+            rx_stream.buffer_queue().set_depth(8);
+            rx_stream.set_buffer_packing(VHD_BUFPACK_VIDEO_YUV422_8);
+
+            rx_stream.set_video_standard(signal_information.video_standard);
+            rx_stream.set_interface(signal_information.video_interface);
+
+            auto window_refresh_interval = 10ms;
+            WindowedRenderer renderer("Live Content", video_characteristics.width / 2, video_characteristics.height / 2
+                                                    , window_refresh_interval.count(), shared_resources.stop_is_requested);
+            std::cout << "Initializing live content rendering window..." << std::endl;
+            renderer.init(video_characteristics.width, video_characteristics.height, Deltacast::VideoViewer::InputFormat::ycbcr_422_8);
+
+            std::cout << std::endl;
+
+            std::cout << "Starting RX stream..." << std::endl;
+            rx_stream.start();
             
-            auto detected_video_format = shared_resources.sdi_video_info.get_video_format(rx_stream->handle()).value();
-            if (detected_video_format != current_video_format)
+            while (!shared_resources.stop_is_requested && !shared_resources.incoming_signal_changed)
             {
-                shared_resources.incoming_signal_changed = true;
-                continue;
+                if (!Application::Helper::wait_for_input(board.rx(rx_stream_id), shared_resources.stop_is_requested))
+                {
+                    std::this_thread::sleep_for(100ms);
+                    continue;
+                }
+                
+                if (Application::Helper::detect_information(rx_stream) != signal_information)
+                {
+                    shared_resources.incoming_signal_changed = true;
+                    continue;
+                }
+
+                {
+                    auto slot = rx_stream.pop_slot();
+                    auto [ buffer, buffer_size ] = slot->video().buffer();
+                    
+                    renderer.render_buffer(buffer, buffer_size);
+                }
+
+                std::cout << "Slots count: " << rx_stream.buffer_queue().slots_count() 
+                                             << " (dropped: " << rx_stream.buffer_queue().slots_dropped() << ")" << "\r";
             }
-            if (!rx_stream->lock_slot())
-               continue;
 
-            auto optional_buffer = rx_stream->get_buffer();
-            if (!optional_buffer)
-                return -1;
-            auto [buffer, buffer_size] = optional_buffer.value();
-
-            renderer.render_buffer(buffer, buffer_size);
-
-            if (!rx_stream->unlock_slot())
-                return -1;
-
-            std::cout << "\rSlot count: " << rx_stream->slot_count() << " (dropped " << rx_stream->dropped_slot_count() << " frames)          ";
+            std::cout << std::endl;
         }
-        std::cout << std::endl;
     }
+    catch (const ApiException& e)
+    {
+        std::cerr << e.what() << std::endl;
+        std::cerr << e.logs() << std::endl;
+    }
+
     return 0;
 }
