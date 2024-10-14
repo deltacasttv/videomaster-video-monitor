@@ -22,6 +22,10 @@ We recommend using Conan 2.x to retrieve those dependencies:
 
     conan install . -b missing -pr YOUR_CONAN_PROFILE
 
+As some dependencies are also retrieved through submodules, you will need to initialize them:
+
+    git submodule update --init --recursive
+
 ## VideoMaster SDK
 
 The VideoMaster SDK is required to build the application.
@@ -32,7 +36,7 @@ After installing the SDK according to the official documentation, the libs and h
 
 If you used Conan to retrieve your dependencies, you can use the following commands to build the project:
 
-    cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=generators/conan_toolchain.cmake
+    cmake --preset YOUR_CMAKE_PRESET
     cmake --build build
 
 # How to use
