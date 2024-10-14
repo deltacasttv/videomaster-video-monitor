@@ -33,18 +33,18 @@ using namespace Deltacast::Wrapper::Helper;
 
 std::ostream& operator<<(std::ostream& os, Board& board)
 {
-    os << "Board " << board.index() << ":  [ " << board.name() << " ]" << std::endl;
-    os << "\t" << "- " << board.number_of_rx() << " RX / " << board.number_of_tx() << " TX" << std::endl;
-    os << "\t" << "- Driver: " << board.driver_version() << std::endl;
-    os << "\t" << "- PCIe ID: " << board.pcie_identifier() << std::endl;
+    os << "\t" << "Board " << board.index() << ":  [ " << board.name() << " ]" << std::endl;
+    os << "\t" << "\t" << "- " << board.number_of_rx() << " RX / " << board.number_of_tx() << " TX" << std::endl;
+    os << "\t" << "\t" << "- Driver: " << board.driver_version() << std::endl;
+    os << "\t" << "\t" << "- PCIe ID: " << board.pcie_identifier() << std::endl;
     os << "\t" << "\t" << "- SN: " << board.serial_number() << std::endl;
     auto [ pcie_bus, number_of_lanes ] = board.pcie();
     os << "\t" << "\t" << "- " << to_pretty_string(pcie_bus) << ", " << number_of_lanes << " lanes" << std::endl;
 
     os << std::hex;
-    os << "\t" << "- Firmware: 0x" << board.fpga().version() << std::endl;
-    os << "\t" << "- SCP: 0x" << board.scp().version() << std::endl;
-    os << "\t" << "- ARM: 0x" << board.arm().version() << std::endl;
+    os << "\t" << "\t" << "- Firmware: 0x" << board.fpga().version() << std::endl;
+    if (board.has_scp())
+        os << "\t" << "\t" << "- SCP: 0x" << board.scp().version() << std::endl;
     os << std::dec;
 
     return os;
