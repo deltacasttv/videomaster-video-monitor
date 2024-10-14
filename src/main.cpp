@@ -67,9 +67,11 @@ int main(int argc, char** argv)
         }
 
         std::cout << "Opening device " << device_id << std::endl;
-        auto board = Board::open(device_id);
+        auto board = Board::open(device_id, [&rx_stream_id](Board& board) { Application::Helper::enable_loopback(board, rx_stream_id); });
 
         std::cout << board << std::endl;
+
+        Application::Helper::disable_loopback(board, rx_stream_id);
 
         while (!shared_resources.stop_is_requested)
         {
