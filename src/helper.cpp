@@ -136,7 +136,7 @@ namespace Application::Helper
         return rx_connector.signal_present();
     }
 
-    Streams open_stream(Board& board, VHD_STREAMTYPE stream_type)
+    TechStream open_stream(Board& board, VHD_STREAMTYPE stream_type)
     {
         auto channel_type = stream_type_to_channel_type(board, stream_type);
         switch (channel_type)
@@ -153,7 +153,7 @@ namespace Application::Helper
         }
     }
 
-    Stream& to_base_stream(Streams& stream)
+    Stream& to_base_stream(TechStream& stream)
     {
         return std::visit(overloaded{
             [](SdiStream& sdi_stream) -> Stream& { return sdi_stream; },
@@ -161,7 +161,7 @@ namespace Application::Helper
         }, stream);
     }
 
-    void configure_stream(Streams& stream, const SignalInformations& signal_information)
+    void configure_stream(TechStream& stream, const SignalInformation& signal_information)
     {
         std::visit(overloaded{
             [&signal_information](SdiStream& sdi_stream)
@@ -182,7 +182,7 @@ namespace Application::Helper
         }, stream);
     }
 
-    void print_information(const SignalInformations& signal_information, const std::string& prefix /*= ""*/)
+    void print_information(const SignalInformation& signal_information, const std::string& prefix /*= ""*/)
     {
         std::visit(overloaded{
             [&prefix](const SdiSignalInformation& sdi_signal_info)
@@ -202,14 +202,14 @@ namespace Application::Helper
         }, signal_information);
     }
 
-    SignalInformations detect_information(Streams& stream)
+    SignalInformation detect_information(TechStream& stream)
     {
         return std::visit(overloaded{
-            [](SdiStream& sdi_stream) -> SignalInformations
+            [](SdiStream& sdi_stream) -> SignalInformation
             {
                 return SdiSignalInformation{sdi_stream.video_standard(), sdi_stream.clock_divisor(), sdi_stream.interface()};
             },
-            [](DvStream& dv_stream) -> SignalInformations
+            [](DvStream& dv_stream) -> SignalInformation
             {
                 return DvSignalInformation{dv_stream.active_width(), dv_stream.active_height(), !dv_stream.interlaced(), dv_stream.frame_rate()
                                             , dv_stream.cable_color_space(), dv_stream.cable_sampling()};
@@ -217,7 +217,7 @@ namespace Application::Helper
         }, stream);
     }
 
-    VideoCharacteristics get_video_characteristics(const SignalInformations& signal_information)
+    VideoCharacteristics get_video_characteristics(const SignalInformation& signal_information)
     {
         return std::visit(overloaded{
             [](const SdiSignalInformation& sdi_signal_info) -> VideoCharacteristics

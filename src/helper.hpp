@@ -34,9 +34,9 @@ namespace Application::Helper
 
     bool wait_for_input(Deltacast::Wrapper::BoardComponents::RxConnector& rx_connector, const std::atomic_bool& stop_is_requested);
 
-    using Streams = std::variant<Deltacast::Wrapper::SdiStream, Deltacast::Wrapper::DvStream>;
-    Streams open_stream(Deltacast::Wrapper::Board& board, VHD_STREAMTYPE stream_type);
-    Deltacast::Wrapper::Stream& to_base_stream(Streams& stream);
+    using TechStream = std::variant<Deltacast::Wrapper::SdiStream, Deltacast::Wrapper::DvStream>;
+    TechStream open_stream(Deltacast::Wrapper::Board& board, VHD_STREAMTYPE stream_type);
+    Deltacast::Wrapper::Stream& to_base_stream(TechStream& stream);
 
     struct SdiSignalInformation
     {
@@ -72,11 +72,11 @@ namespace Application::Helper
         }
         bool operator!=(const DvSignalInformation& other) const { return !(*this == other); }
     };
-    using SignalInformations = std::variant<SdiSignalInformation, DvSignalInformation>;
+    using SignalInformation = std::variant<SdiSignalInformation, DvSignalInformation>;
 
-    void configure_stream(Streams& stream, const SignalInformations& signal_information);
-    void print_information(const SignalInformations& signal_information, const std::string& prefix = "");
-    SignalInformations detect_information(Streams& stream);
+    void configure_stream(TechStream& stream, const SignalInformation& signal_information);
+    void print_information(const SignalInformation& signal_information, const std::string& prefix = "");
+    SignalInformation detect_information(TechStream& stream);
 
-    Deltacast::Wrapper::Helper::VideoCharacteristics get_video_characteristics(const SignalInformations& signal_information);
+    Deltacast::Wrapper::Helper::VideoCharacteristics get_video_characteristics(const SignalInformation& signal_information);
 }
