@@ -53,4 +53,4 @@ To select the device and connector indexes to use
 
     ./VideoMasterInputViewer --device 0 --input 0
 
-Use the device of indexe 0 and the reception connector of indexe 0.
+Use the device at index 0 and the reception connector at index 0.
