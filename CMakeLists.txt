@@ -5,7 +5,7 @@ git_version(GIT_VERSION)
 set_version(${GIT_VERSION})
 
 project(
-    "VideoMasterInputViewer"
+    "videomaster-video-monitor"
     VERSION ${PROJECT_VERSION}
     DESCRIPTION "Application that displays the content of an input stream captured by a Deltacast.TV device, interfaced with the VideoMaster SDK"
     LANGUAGES CXX
