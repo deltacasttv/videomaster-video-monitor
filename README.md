@@ -43,14 +43,14 @@ If you used Conan to retrieve your dependencies, you can use the following comma
 
 All relevant information regarding the application can be found by running the application with the --help option:
 
-    ./VideoMasterInputViewer --help
+    ./videomaster-video-monitor --help
 
 For example, to run the application with the default settings (same as `--device 0 --input 0`), simply run:
 
-    ./VideoMasterInputViewer
+    ./videomaster-video-monitor
 
 To select the device and connector indexes to use
 
-    ./VideoMasterInputViewer --device 0 --input 0
+    ./videomaster-video-monitor --device 0 --input 0
 
 Use the device at index 0 and the reception connector at index 0.
