@@ -2,7 +2,7 @@
 
 Application that displays the content of an input stream captured by a DELTACAST device, interfaced with the VideoMaster SDK.
 
-SDI, HDMI or DisplayPort channels are currently the only valid type of channels for this application.
+SDI, HDMI or DisplayPort channels are currently the only valid types of channels for this application.
 
 OS Support:
 - Windows
