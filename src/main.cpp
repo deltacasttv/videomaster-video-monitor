@@ -78,7 +78,8 @@ int main(int argc, char** argv)
             shared_resources.reset();
 
             std::cout << "Opening RX" << rx_stream_id << " stream..." << std::endl;
-            auto rx_stream = board.sdi().open_stream(Application::Helper::rx_index_to_streamtype(rx_stream_id), VHD_SDI_STPROC_DISJOINED_VIDEO);
+            auto rx_tech_stream = Application::Helper::open_stream(board, Application::Helper::rx_index_to_streamtype(rx_stream_id));
+            auto& rx_stream = Application::Helper::to_base_stream(rx_tech_stream);
 
             std::cout << "Waiting for signal..." << std::endl;
             if (!Application::Helper::wait_for_input(board.rx(rx_stream_id), shared_resources.stop_is_requested))
@@ -87,18 +88,14 @@ int main(int argc, char** argv)
                 return -1;
             }
 
-            auto signal_information = Application::Helper::detect_information(rx_stream);
+            auto signal_information = Application::Helper::detect_information(rx_tech_stream);
             auto video_characteristics = Application::Helper::get_video_characteristics(signal_information);
             std::cout << "Detected:" << std::endl;
-            std::cout << "\t" << "Video standard: " << to_pretty_string(signal_information.video_standard) << std::endl;
-            std::cout << "\t" << "Clock divisor: " << to_pretty_string(signal_information.clock_divisor) << std::endl;
-            std::cout << "\t" << "Interface: " << to_pretty_string(signal_information.video_interface) << std::endl;
+            Application::Helper::print_information(signal_information, "\t");
 
             rx_stream.buffer_queue().set_depth(8);
             rx_stream.set_buffer_packing(VHD_BUFPACK_VIDEO_YUV422_8);
-
-            rx_stream.set_video_standard(signal_information.video_standard);
-            rx_stream.set_interface(signal_information.video_interface);
+            Application::Helper::configure_stream(rx_tech_stream, signal_information);
 
             auto window_refresh_interval = 10ms;
             WindowedRenderer renderer("Live Content", video_characteristics.width / 2, video_characteristics.height / 2
@@ -119,7 +116,7 @@ int main(int argc, char** argv)
                     continue;
                 }
                 
-                if (Application::Helper::detect_information(rx_stream) != signal_information)
+                if (Application::Helper::detect_information(rx_tech_stream) != signal_information)
                 {
                     shared_resources.incoming_signal_changed = true;
                     continue;

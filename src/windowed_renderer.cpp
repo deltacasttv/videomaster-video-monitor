@@ -24,6 +24,7 @@ WindowedRenderer::WindowedRenderer(std::string window_title, int window_width, i
     , _window_height(window_height)
     , _framerate_ms(framerate_ms)
     , _should_stop(stop_is_requested)
+    , _monitor_ready(false)
 {
 }
 
@@ -35,6 +36,8 @@ WindowedRenderer::~WindowedRenderer()
 bool WindowedRenderer::init(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format)
 {
     _monitor_thread = std::thread(&WindowedRenderer::monitor, this, image_width, image_height, input_format);
+    while (!_monitor_ready)
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     return true;
 }
@@ -47,6 +50,7 @@ bool WindowedRenderer::monitor(int image_width, int image_height, Deltacast::Vid
         return false;
     }
 
+    _monitor_ready = true;
     _monitor.render_loop(_framerate_ms);
     _monitor.release();
 
@@ -57,7 +61,10 @@ bool WindowedRenderer::stop()
 {
     _monitor.stop();
     if (_monitor_thread.joinable())
+    {
         _monitor_thread.join();
+        _monitor_ready = false;
+    }
 
     return true;
 }

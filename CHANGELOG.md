@@ -1,10 +1,19 @@
 # Unreleased
 
+## Added
+
+- Support for DV streams
+
 ## Improved
 
 - Complete refactoring to make use of new VideoMaster C++ Wrapper
 - Update dependency to video-viewer
 - Handle dependencies with conan 2.x and submodule instead of fetch_content
+
+## Fixed
+
+- Stream would start too soon before the monitor is completely initialized, leading to some drops
+
 
 # 1.1.0
 

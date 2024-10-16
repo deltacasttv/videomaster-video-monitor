@@ -16,10 +16,17 @@
 #include "helper.hpp"
 
 #include <thread>
+#include <utility>
 #include <optional>
 #include <VideoMasterCppApi/to_string.hpp>
 #include <VideoMasterCppApi/exception.hpp>
+#include <VideoMasterCppApi/to_string.hpp>
 #include <VideoMasterCppApi/helper/sdi.hpp>
+
+template<class... Ts>
+struct overloaded : Ts... { using Ts::operator()...; };
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
 
 using namespace Deltacast::Wrapper;
 using namespace Deltacast::Wrapper::Helper;
@@ -88,6 +95,39 @@ namespace Application::Helper
         }
     }
 
+    VHD_CHANNELTYPE stream_type_to_channel_type(Board& board, VHD_STREAMTYPE stream_type)
+    {
+        switch (stream_type)
+        {
+            case VHD_ST_RX0: return board.rx(0).type();
+            case VHD_ST_RX1: return board.rx(1).type();
+            case VHD_ST_RX2: return board.rx(2).type();
+            case VHD_ST_RX3: return board.rx(3).type();
+            case VHD_ST_RX4: return board.rx(4).type();
+            case VHD_ST_RX5: return board.rx(5).type();
+            case VHD_ST_RX6: return board.rx(6).type();
+            case VHD_ST_RX7: return board.rx(7).type();
+            case VHD_ST_RX8: return board.rx(8).type();
+            case VHD_ST_RX9: return board.rx(9).type();
+            case VHD_ST_RX10: return board.rx(10).type();
+            case VHD_ST_RX11: return board.rx(11).type();
+            case VHD_ST_TX0: return board.tx(0).type();
+            case VHD_ST_TX1: return board.tx(1).type();
+            case VHD_ST_TX2: return board.tx(2).type();
+            case VHD_ST_TX3: return board.tx(3).type();
+            case VHD_ST_TX4: return board.tx(4).type();
+            case VHD_ST_TX5: return board.tx(5).type();
+            case VHD_ST_TX6: return board.tx(6).type();
+            case VHD_ST_TX7: return board.tx(7).type();
+            case VHD_ST_TX8: return board.tx(8).type();
+            case VHD_ST_TX9: return board.tx(9).type();
+            case VHD_ST_TX10: return board.tx(10).type();
+            case VHD_ST_TX11: return board.tx(11).type();
+            default:
+                throw std::invalid_argument("Invalid stream type");
+        }
+    }
+
     bool wait_for_input(BoardComponents::RxConnector& rx_connector, const std::atomic_bool& stop_is_requested)
     {
         while (!stop_is_requested && !rx_connector.signal_present())
@@ -96,13 +136,98 @@ namespace Application::Helper
         return rx_connector.signal_present();
     }
 
-    SdiSignalInformation detect_information(SdiStream& sdi_stream)
+    TechStream open_stream(Board& board, VHD_STREAMTYPE stream_type)
     {
-        return { sdi_stream.video_standard(), sdi_stream.clock_divisor(), sdi_stream.interface() };
+        auto channel_type = stream_type_to_channel_type(board, stream_type);
+        switch (channel_type)
+        {
+            case VHD_CHNTYPE_HDSDI:
+            case VHD_CHNTYPE_3GSDI:
+            case VHD_CHNTYPE_12GSDI:
+                return std::move(board.sdi().open_stream(stream_type, VHD_SDI_STPROC_DISJOINED_VIDEO));
+            case VHD_CHNTYPE_HDMI:
+            case VHD_CHNTYPE_DISPLAYPORT:
+                return std::move(board.dv().open_stream(stream_type, VHD_DV_STPROC_DISJOINED_VIDEO));
+            default:
+                throw std::invalid_argument("Invalid channel type");
+        }
     }
 
-    VideoCharacteristics get_video_characteristics(const SdiSignalInformation& sdi_signal_information)
+    Stream& to_base_stream(TechStream& stream)
     {
-        return Sdi::video_standard_to_characteristics(sdi_signal_information.video_standard);
+        return std::visit(overloaded{
+            [](SdiStream& sdi_stream) -> Stream& { return sdi_stream; },
+            [](DvStream& dv_stream) -> Stream& { return dv_stream; }
+        }, stream);
+    }
+
+    void configure_stream(TechStream& stream, const SignalInformation& signal_information)
+    {
+        std::visit(overloaded{
+            [&signal_information](SdiStream& sdi_stream)
+            {
+                const SdiSignalInformation& sdi_signal_information = std::get<SdiSignalInformation>(signal_information);
+                sdi_stream.set_video_standard(sdi_signal_information.video_standard);
+                sdi_stream.set_interface(sdi_signal_information.video_interface);
+            },
+            [&signal_information](DvStream& dv_stream)
+            {
+                const DvSignalInformation& dv_signal_information = std::get<DvSignalInformation>(signal_information);
+                dv_stream.set_active_width(dv_signal_information.width);
+                dv_stream.set_active_height(dv_signal_information.height);
+                dv_signal_information.progressive ? dv_stream.set_progressive() : dv_stream.set_interlaced();
+                dv_stream.set_frame_rate(dv_signal_information.framerate);
+                dv_stream.set_cable_color_space(dv_signal_information.cable_color_space);
+            }
+        }, stream);
+    }
+
+    void print_information(const SignalInformation& signal_information, const std::string& prefix /*= ""*/)
+    {
+        std::visit(overloaded{
+            [&prefix](const SdiSignalInformation& sdi_signal_info)
+            {
+                std::cout << prefix << "Video standard: " << to_pretty_string(sdi_signal_info.video_standard) << std::endl;
+                std::cout << prefix << "Clock divisor: " << to_pretty_string(sdi_signal_info.clock_divisor) << std::endl;
+                std::cout << prefix << "Interface: " << to_pretty_string(sdi_signal_info.video_interface) << std::endl;
+            },
+            [&prefix](const DvSignalInformation& dv_signal_info)
+            {
+                std::cout << prefix << dv_signal_info.width << "x" << dv_signal_info.height 
+                                    << (dv_signal_info.progressive ? "p" : "i") 
+                                    << dv_signal_info.framerate << std::endl;
+                std::cout << prefix << to_pretty_string(dv_signal_info.cable_color_space) << std::endl;
+                std::cout << prefix << to_pretty_string(dv_signal_info.cable_sampling) << std::endl;
+            }
+        }, signal_information);
+    }
+
+    SignalInformation detect_information(TechStream& stream)
+    {
+        return std::visit(overloaded{
+            [](SdiStream& sdi_stream) -> SignalInformation
+            {
+                return SdiSignalInformation{sdi_stream.video_standard(), sdi_stream.clock_divisor(), sdi_stream.interface()};
+            },
+            [](DvStream& dv_stream) -> SignalInformation
+            {
+                return DvSignalInformation{dv_stream.active_width(), dv_stream.active_height(), !dv_stream.interlaced(), dv_stream.frame_rate()
+                                            , dv_stream.cable_color_space(), dv_stream.cable_sampling()};
+            }
+        }, stream);
+    }
+
+    VideoCharacteristics get_video_characteristics(const SignalInformation& signal_information)
+    {
+        return std::visit(overloaded{
+            [](const SdiSignalInformation& sdi_signal_info) -> VideoCharacteristics
+            {
+                return Sdi::video_standard_to_characteristics(sdi_signal_info.video_standard);
+            },
+            [](const DvSignalInformation& dv_signal_info) -> VideoCharacteristics
+            {
+                return { dv_signal_info.width, dv_signal_info.height, !dv_signal_info.progressive, dv_signal_info.framerate };
+            }
+        }, signal_information);
     }
 }
