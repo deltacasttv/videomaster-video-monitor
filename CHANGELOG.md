@@ -1,3 +1,9 @@
+# 2.1.0
+
+## Added
+
+- Support for DELTA-hmi-e 40 [PR #9]
+
 # 2.0.0
 
 ## Added

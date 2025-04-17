@@ -145,7 +145,11 @@ namespace Application::Helper
             case VHD_CHNTYPE_3GSDI:
             case VHD_CHNTYPE_12GSDI:
                 return std::move(board.sdi().open_stream(stream_type, VHD_SDI_STPROC_DISJOINED_VIDEO));
-            case VHD_CHNTYPE_HDMI:
+            case VHD_CHNTYPE_HDMI_TMDS:
+            case VHD_CHNTYPE_HDMI_FRL3:
+            case VHD_CHNTYPE_HDMI_FRL4:
+            case VHD_CHNTYPE_HDMI_FRL5:
+            case VHD_CHNTYPE_HDMI_FRL6:
             case VHD_CHNTYPE_DISPLAYPORT:
                 return std::move(board.dv().open_stream(stream_type, VHD_DV_STPROC_DISJOINED_VIDEO));
             default:

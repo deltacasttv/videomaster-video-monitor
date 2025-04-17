@@ -141,6 +141,9 @@ int main(int argc, char** argv)
         std::cerr << e.what() << std::endl;
         std::cerr << e.logs() << std::endl;
     }
-
+    catch (const std::exception& e)
+    {
+        std::cerr << e.what() << std::endl;
+    }
     return 0;
 }

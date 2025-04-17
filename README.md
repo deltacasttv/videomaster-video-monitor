@@ -28,7 +28,7 @@ As some dependencies are also retrieved through submodules, you will need to ini
 
 ## VideoMaster SDK
 
-The VideoMaster SDK (version >= 6.26) is required to build the application.
+The VideoMaster SDK (version >= 6.30) is required to build the application.
 
 After installing the SDK according to the official documentation, the libs and headers should be found without further step needed through the `find_package` command.
 
