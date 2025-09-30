@@ -140,10 +140,12 @@ int main(int argc, char** argv)
     {
         std::cerr << e.what() << std::endl;
         std::cerr << e.logs() << std::endl;
+        return -1;
     }
     catch (const std::exception& e)
     {
         std::cerr << e.what() << std::endl;
+        return -1;
     }
     return 0;
 }
