@@ -12,6 +12,8 @@ class VideoMonitor(ConanFile):
         
         for dep in config["requires"]:
             self.requires(dep)
+        
+        self.requires("cli11/2.4.2")
 
     def layout(self):
         cmake_layout(self)
