@@ -23,8 +23,6 @@
 #include <VideoMasterCppApi/to_string.hpp>
 #include <VideoMasterCppApi/api.hpp>
 #include <VideoMasterCppApi/board/board.hpp>
-#include <VideoMasterCppApi/stream/sdi/sdi_stream.hpp>
-#include <VideoMasterCppApi/slot/sdi/sdi_slot.hpp>
 
 #include "version.hpp"
 #include "helper.hpp"
@@ -32,9 +30,8 @@
 #include "windowed_renderer.hpp"
 
 using namespace std::chrono_literals;
-using namespace Deltacast::Wrapper;
 
-Deltacast::SharedResources shared_resources;
+Deltacast::VideoMonitor::SharedResources shared_resources;
 
 void on_close(int /*signal*/)
 {
@@ -44,6 +41,7 @@ void on_close(int /*signal*/)
 int main(int argc, char** argv)
 {
     CLI::App app{"Identify an incoming signal and display it on the screen"};
+
     
     int device_id = 0;
     app.add_option("-d,--device", device_id, "ID of the device to use");
@@ -57,45 +55,45 @@ int main(int argc, char** argv)
 
     try
     {    
-        std::cout << "VideoMaster API version: " << api_version() << std::endl;
-        std::cout << "Discovered " << Board::count() << " devices" << std::endl;
+        std::cout << "VideoMaster API version: " << Deltacast::Wrapper::api_version() << std::endl;
+        std::cout << "Discovered " << Deltacast::Wrapper::Board::count() << " devices" << std::endl;
 
-        if (device_id >= Board::count())
+        if (device_id >= Deltacast::Wrapper::Board::count())
         {
             std::cout << "Invalid device ID" << std::endl;
             return -1;
         }
 
         std::cout << "Opening device " << device_id << std::endl;
-        auto board = Board::open(device_id, [&rx_stream_id](Board& board) { Application::Helper::enable_loopback(board, rx_stream_id); });
+        auto board = Deltacast::Wrapper::Board::open(device_id, [&rx_stream_id](Deltacast::Wrapper::Board& board) { Deltacast::VideoMonitor::Helper::enable_loopback(board, rx_stream_id); });
 
         std::cout << board << std::endl;
 
-        Application::Helper::disable_loopback(board, rx_stream_id);
+        Deltacast::VideoMonitor::Helper::disable_loopback(board, rx_stream_id);
 
         while (!shared_resources.stop_is_requested)
         {
             shared_resources.reset();
 
             std::cout << "Opening RX" << rx_stream_id << " stream..." << std::endl;
-            auto rx_tech_stream = Application::Helper::open_stream(board, Application::Helper::rx_index_to_streamtype(rx_stream_id));
-            auto& rx_stream = Application::Helper::to_base_stream(rx_tech_stream);
+            auto rx_tech_stream = Deltacast::VideoMonitor::Helper::open_stream(board, Deltacast::VideoMonitor::Helper::rx_index_to_streamtype(rx_stream_id));
+            auto& rx_stream = Deltacast::VideoMonitor::Helper::to_base_stream(rx_tech_stream);
 
             std::cout << "Waiting for signal..." << std::endl;
-            if (!Application::Helper::wait_for_input(board.rx(rx_stream_id), shared_resources.stop_is_requested))
+            if (!Deltacast::VideoMonitor::Helper::wait_for_input(board.rx(rx_stream_id), shared_resources.stop_is_requested))
             {
                 std::cerr << "Application has been stopped before any input was received." << std::endl;
                 return -1;
             }
 
-            auto signal_information = Application::Helper::detect_information(rx_tech_stream);
-            auto video_characteristics = Application::Helper::get_video_characteristics(signal_information);
+            auto signal_information = Deltacast::VideoMonitor::Helper::detect_information(rx_tech_stream);
+            auto video_characteristics = Deltacast::VideoMonitor::Helper::get_video_characteristics(signal_information);
             std::cout << "Detected:" << std::endl;
-            Application::Helper::print_information(signal_information, "\t");
+            Deltacast::VideoMonitor::Helper::print_information(signal_information, "\t");
 
             rx_stream.buffer_queue().set_depth(8);
             rx_stream.set_buffer_packing(VHD_BUFPACK_VIDEO_YUV422_8);
-            Application::Helper::configure_stream(rx_tech_stream, signal_information);
+            Deltacast::VideoMonitor::Helper::configure_stream(rx_tech_stream, signal_information);
 
             auto window_refresh_interval = 10ms;
             WindowedRenderer renderer("Live Content", video_characteristics.width / 2, video_characteristics.height / 2
@@ -110,13 +108,13 @@ int main(int argc, char** argv)
             
             while (!shared_resources.stop_is_requested && !shared_resources.incoming_signal_changed)
             {
-                if (!Application::Helper::wait_for_input(board.rx(rx_stream_id), shared_resources.stop_is_requested))
+                if (!Deltacast::VideoMonitor::Helper::wait_for_input(board.rx(rx_stream_id), shared_resources.stop_is_requested))
                 {
                     std::this_thread::sleep_for(100ms);
                     continue;
                 }
                 
-                if (Application::Helper::detect_information(rx_tech_stream) != signal_information)
+                if (Deltacast::VideoMonitor::Helper::detect_information(rx_tech_stream) != signal_information)
                 {
                     shared_resources.incoming_signal_changed = true;
                     continue;
@@ -136,7 +134,7 @@ int main(int argc, char** argv)
             std::cout << std::endl;
         }
     }
-    catch (const ApiException& e)
+    catch (const Deltacast::Wrapper::ApiException& e)
     {
         std::cerr << e.what() << std::endl;
         std::cerr << e.logs() << std::endl;

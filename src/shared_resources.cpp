@@ -15,7 +15,7 @@
 
 #include "shared_resources.hpp"
 
-void Deltacast::SharedResources::reset()
+void Deltacast::VideoMonitor::SharedResources::reset()
 {
     stop_is_requested = false;
     incoming_signal_changed = false;

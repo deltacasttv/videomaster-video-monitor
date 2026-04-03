@@ -22,6 +22,7 @@ add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
 # dependencies
 
 # VideoMaster SDK
+find_package(CLI11 REQUIRED)
 find_package(VideoMasterHD 6.30 REQUIRED)
 FetchContent_MakeAvailable(VideoMasterCppApi)
 

@@ -18,7 +18,7 @@
 #include <algorithm>
 #include <atomic>
 
-namespace Deltacast
+namespace Deltacast::VideoMonitor
 {
     struct SharedResources
     {
