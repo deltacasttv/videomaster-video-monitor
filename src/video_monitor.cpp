@@ -43,110 +43,103 @@ namespace Deltacast::VideoMonitor
         CLI11_PARSE(m_app, argc, argv);
 
         spdlog::info("VideoMaster video-monitor ({})", VERSTRING);
-        try
-        {
-            spdlog::info("VideoMaster API version: {}", Deltacast::Wrapper::api_version());
-            spdlog::trace("Discovered {} devices", Deltacast::Wrapper::Board::count());
 
-            if (m_device_id >= Deltacast::Wrapper::Board::count())
+        spdlog::info("VideoMaster API version: {}", Deltacast::Wrapper::api_version());
+        spdlog::trace("Discovered {} devices", Deltacast::Wrapper::Board::count());
+
+        if (m_device_id >= Deltacast::Wrapper::Board::count())
+        {
+            spdlog::error("Invalid device ID");
+            return static_cast<int>(ExitCode::FailureUnexpected);
+        }
+
+        spdlog::debug("Opening device {}", m_device_id);
+        auto board = Deltacast::Wrapper::Board::open(
+            m_device_id, [this](Deltacast::Wrapper::Board& board)
+            { Deltacast::VideoMonitor::Helper::enable_loopback(board, m_stream_id); });
+
+        spdlog::trace("Opened device {}", m_device_id);
+
+        Deltacast::VideoMonitor::Helper::disable_loopback(board, m_stream_id);
+
+        while (!m_shared_resources.stop_is_requested)
+        {
+            m_shared_resources.reset();
+
+            spdlog::debug("Opening RX{} stream...", m_stream_id);
+            auto rx_tech_stream = Deltacast::VideoMonitor::Helper::open_stream(
+                board, Deltacast::VideoMonitor::Helper::rx_index_to_streamtype(m_stream_id));
+            auto& rx_stream = Deltacast::VideoMonitor::Helper::to_base_stream(rx_tech_stream);
+
+            spdlog::trace("Waiting for signal...");
+            if (!Deltacast::VideoMonitor::Helper::wait_for_input(
+                    board.rx(m_stream_id), m_shared_resources.stop_is_requested))
             {
-                spdlog::error("Invalid device ID");
-                return -1;
+                spdlog::error("Application has been stopped before any input was received.");
+                return static_cast<int>(ExitCode::StopRequestedBeforeSignal);
             }
 
-            spdlog::debug("Opening device {}", m_device_id);
-            auto board = Deltacast::Wrapper::Board::open(
-                m_device_id, [this](Deltacast::Wrapper::Board& board)
-                { Deltacast::VideoMonitor::Helper::enable_loopback(board, m_stream_id); });
+            auto signal_information = Deltacast::VideoMonitor::Helper::detect_information(
+                rx_tech_stream);
+            auto video_characteristics = Deltacast::VideoMonitor::Helper::get_video_characteristics(
+                signal_information);
+            spdlog::info("Detected: {}",
+                         Deltacast::VideoMonitor::Helper::get_information_string(signal_information,
+                                                                                 "\t"));
 
-            spdlog::trace("Opened device {}", m_device_id);
+            rx_stream.buffer_queue().set_depth(8);
+            rx_stream.set_buffer_packing(VHD_BUFPACK_VIDEO_YUV422_8);
+            Deltacast::VideoMonitor::Helper::configure_stream(rx_tech_stream, signal_information);
 
-            Deltacast::VideoMonitor::Helper::disable_loopback(board, m_stream_id);
+            auto             window_refresh_interval = 10ms;
+            WindowedRenderer renderer("Live Content", video_characteristics.width / 2,
+                                      video_characteristics.height / 2,
+                                      window_refresh_interval.count(),
+                                      m_shared_resources.stop_is_requested);
+            spdlog::trace("Initializing live content rendering window...");
+            renderer.init(video_characteristics.width, video_characteristics.height,
+                          Deltacast::VideoViewer::InputFormat::ycbcr_422_8);
 
-            while (!m_shared_resources.stop_is_requested)
+            spdlog::trace("Starting RX stream...");
+            rx_stream.start();
+
+            while (!m_shared_resources.stop_is_requested &&
+                   !m_shared_resources.incoming_signal_changed)
             {
-                m_shared_resources.reset();
-
-                spdlog::debug("Opening RX{} stream...", m_stream_id);
-                auto rx_tech_stream = Deltacast::VideoMonitor::Helper::open_stream(
-                    board, Deltacast::VideoMonitor::Helper::rx_index_to_streamtype(m_stream_id));
-                auto& rx_stream = Deltacast::VideoMonitor::Helper::to_base_stream(rx_tech_stream);
-
-                spdlog::trace("Waiting for signal...");
                 if (!Deltacast::VideoMonitor::Helper::wait_for_input(
                         board.rx(m_stream_id), m_shared_resources.stop_is_requested))
                 {
-                    spdlog::error("Application has been stopped before any input was received.");
-                    return -1;
+                    std::this_thread::sleep_for(100ms);
+                    continue;
                 }
 
-                auto signal_information = Deltacast::VideoMonitor::Helper::detect_information(
-                    rx_tech_stream);
-                auto video_characteristics =
-                    Deltacast::VideoMonitor::Helper::get_video_characteristics(signal_information);
-                spdlog::info("Detected: {}",
-                             Deltacast::VideoMonitor::Helper::get_information_string(
-                                 signal_information, "\t"));
-
-                rx_stream.buffer_queue().set_depth(8);
-                rx_stream.set_buffer_packing(VHD_BUFPACK_VIDEO_YUV422_8);
-                Deltacast::VideoMonitor::Helper::configure_stream(rx_tech_stream,
-                                                                  signal_information);
-
-                auto             window_refresh_interval = 10ms;
-                WindowedRenderer renderer("Live Content", video_characteristics.width / 2,
-                                          video_characteristics.height / 2,
-                                          window_refresh_interval.count(),
-                                          m_shared_resources.stop_is_requested);
-                spdlog::trace("Initializing live content rendering window...");
-                renderer.init(video_characteristics.width, video_characteristics.height,
-                              Deltacast::VideoViewer::InputFormat::ycbcr_422_8);
-
-                spdlog::trace("Starting RX stream...");
-                rx_stream.start();
-
-                while (!m_shared_resources.stop_is_requested &&
-                       !m_shared_resources.incoming_signal_changed)
+                if (Deltacast::VideoMonitor::Helper::detect_information(rx_tech_stream) !=
+                    signal_information)
                 {
-                    if (!Deltacast::VideoMonitor::Helper::wait_for_input(
-                            board.rx(m_stream_id), m_shared_resources.stop_is_requested))
-                    {
-                        std::this_thread::sleep_for(100ms);
-                        continue;
-                    }
-
-                    if (Deltacast::VideoMonitor::Helper::detect_information(rx_tech_stream) !=
-                        signal_information)
-                    {
-                        m_shared_resources.incoming_signal_changed = true;
-                        continue;
-                    }
-
-                    {
-                        auto slot = rx_stream.pop_slot();
-                        auto [buffer, buffer_size] = slot->video().buffer();
-
-                        renderer.render_buffer(buffer, buffer_size);
-                    }
-
-                    spdlog::trace("Slots count: {} (dropped: {})",
-                                  rx_stream.buffer_queue().slots_count(),
-                                  rx_stream.buffer_queue().slots_dropped());
+                    m_shared_resources.incoming_signal_changed = true;
+                    continue;
                 }
+
+                {
+                    auto slot = rx_stream.pop_slot();
+                    auto [buffer, buffer_size] = slot->video().buffer();
+
+                    renderer.render_buffer(buffer, buffer_size);
+                }
+
+                spdlog::trace("Slots count: {} (dropped: {})",
+                              rx_stream.buffer_queue().slots_count(),
+                              rx_stream.buffer_queue().slots_dropped());
+            }
+
+            // Check if renderer thread had an exception
+            if (auto renderer_exception = renderer.get_thread_exception())
+            {
+                spdlog::error("Renderer thread encountered an error, rethrowing");
+                std::rethrow_exception(renderer_exception);
             }
         }
-        catch (const Deltacast::Wrapper::ApiException& e)
-        {
-            spdlog::error("API Exception: {}", e.what());
-            spdlog::error("Logs: {}", e.logs());
-            return -1;
-        }
-        catch (const std::exception& e)
-        {
-            spdlog::error("Exception: {}", e.what());
-            return -1;
-        }
-        return 0;
+        return static_cast<int>(ExitCode::Success);
     }
 
     void VideoMonitorApp::init_cli()

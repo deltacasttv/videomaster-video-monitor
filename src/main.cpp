@@ -25,6 +25,7 @@
 #include <VideoMasterCppApi/to_string.hpp>
 #include <spdlog/spdlog.h>
 
+#include "exceptions.hpp"
 #include "shared_resources.hpp"
 #include "video_monitor.hpp"
 
@@ -45,15 +46,20 @@ int main(int argc, char** argv)
 
         return app.run(argc, argv);
     }
+    catch (const Deltacast::VideoMonitor::ApplicationException& e)
+    {
+        spdlog::error("Application Exception: {}", e.what());
+        return static_cast<int>(Deltacast::VideoMonitor::ExitCode::FailureUnexpected);
+    }
     catch (const Deltacast::Wrapper::ApiException& e)
     {
         spdlog::error("API Exception: {}", e.what());
         spdlog::error("Logs: {}", e.logs());
-        return EXIT_FAILURE;
+        return static_cast<int>(Deltacast::VideoMonitor::ExitCode::FailureUnexpected);
     }
     catch (const std::exception& e)
     {
         spdlog::error("Exception: {}", e.what());
-        return EXIT_FAILURE;
+        return static_cast<int>(Deltacast::VideoMonitor::ExitCode::FailureUnexpected);
     }
 }

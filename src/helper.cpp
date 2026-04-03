@@ -14,6 +14,7 @@
  */
 
 #include "helper.hpp"
+#include "exceptions.hpp"
 
 #include <VideoMasterCppApi/exception.hpp>
 #include <VideoMasterCppApi/helper/sdi.hpp>
@@ -185,7 +186,7 @@ namespace Deltacast::VideoMonitor::Helper
         case 11:
             return VHD_ST_RX11;
         default:
-            throw std::invalid_argument("Invalid RX index");
+            throw Deltacast::VideoMonitor::SignalDetectionException("Invalid RX index");
         }
     }
 
@@ -215,7 +216,7 @@ namespace Deltacast::VideoMonitor::Helper
         case VHD_CHNTYPE_DISPLAYPORT:
             return std::move(board.dv().open_stream(stream_type, VHD_DV_STPROC_DISJOINED_VIDEO));
         default:
-            throw std::invalid_argument("Invalid channel type");
+            throw Deltacast::VideoMonitor::SignalConfigurationException("Invalid stream type");
         }
     }
 

@@ -17,6 +17,8 @@
 
 #include <algorithm>
 #include <atomic>
+#include <exception>
+#include <mutex>
 
 namespace Deltacast::VideoMonitor
 {
@@ -25,6 +27,28 @@ namespace Deltacast::VideoMonitor
         std::atomic_bool stop_is_requested{ false };
         std::atomic_bool incoming_signal_changed{ false };
 
+        // For communicating exceptions from worker threads to main
+        mutable std::mutex thread_exception_mutex;
+        std::exception_ptr thread_exception;
+
         void reset();
+
+        void set_thread_exception(std::exception_ptr e)
+        {
+            std::lock_guard<std::mutex> lock(thread_exception_mutex);
+            thread_exception = e;
+        }
+
+        std::exception_ptr get_thread_exception() const
+        {
+            std::lock_guard<std::mutex> lock(thread_exception_mutex);
+            return thread_exception;
+        }
+
+        void clear_thread_exception()
+        {
+            std::lock_guard<std::mutex> lock(thread_exception_mutex);
+            thread_exception = nullptr;
+        }
     };
 }  // namespace Deltacast::VideoMonitor

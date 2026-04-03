@@ -14,6 +14,7 @@
  */
 
 #include "windowed_renderer.hpp"
+#include "exceptions.hpp"
 
 #include <cstring>
 #include <iostream>
@@ -22,8 +23,9 @@
 
 WindowedRenderer::WindowedRenderer(std::string window_title, int window_width, int window_height,
                                    int framerate_ms, std::atomic_bool& stop_is_requested)
-    : _window_title(window_title), _window_width(window_width), _window_height(window_height),
-      _framerate_ms(framerate_ms), _should_stop(stop_is_requested), _monitor_ready(false)
+    : m_window_title(window_title), m_window_width(window_width), m_window_height(window_height),
+      m_framerate_ms(framerate_ms), m_should_stop(stop_is_requested), m_monitor_ready(false),
+      m_thread_exception(nullptr)
 {
 }
 
@@ -35,9 +37,9 @@ WindowedRenderer::~WindowedRenderer()
 bool WindowedRenderer::init(int image_width, int image_height,
                             Deltacast::VideoViewer::InputFormat input_format)
 {
-    _monitor_thread = std::thread(&WindowedRenderer::monitor, this, image_width, image_height,
-                                  input_format);
-    while (!_monitor_ready)
+    m_monitor_thread = std::thread(&WindowedRenderer::monitor, this, image_width, image_height,
+                                   input_format);
+    while (!m_monitor_ready)
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     return true;
@@ -46,27 +48,44 @@ bool WindowedRenderer::init(int image_width, int image_height,
 bool WindowedRenderer::monitor(int image_width, int image_height,
                                Deltacast::VideoViewer::InputFormat input_format)
 {
-    if (!_monitor.init(_window_width, _window_height, _window_title.c_str(), image_width,
-                       image_height, input_format))
+    try
     {
-        spdlog::error("VideoViewer initialization failed");
+        if (!m_monitor.init(m_window_width, m_window_height, m_window_title.c_str(), image_width,
+                            image_height, input_format))
+        {
+            throw Deltacast::VideoMonitor::RendererInitializationException(
+                "VideoViewer initialization failed");
+        }
+
+        m_monitor_ready = true;
+        m_monitor.render_loop(m_framerate_ms);
+        m_monitor.release();
+
+        return true;
+    }
+    catch (const Deltacast::VideoMonitor::ApplicationException& e)
+    {
+        spdlog::error("Renderer exception: {}", e.what());
+        m_thread_exception = std::current_exception();
+        m_should_stop = true;
         return false;
     }
-
-    _monitor_ready = true;
-    _monitor.render_loop(_framerate_ms);
-    _monitor.release();
-
-    return true;
+    catch (const std::exception& e)
+    {
+        spdlog::error("Renderer unexpected exception: {}", e.what());
+        m_thread_exception = std::current_exception();
+        m_should_stop = true;
+        return false;
+    }
 }
 
 bool WindowedRenderer::stop()
 {
-    _monitor.stop();
-    if (_monitor_thread.joinable())
+    m_monitor.stop();
+    if (m_monitor_thread.joinable())
     {
-        _monitor_thread.join();
-        _monitor_ready = false;
+        m_monitor_thread.join();
+        m_monitor_ready = false;
     }
 
     return true;
@@ -76,15 +95,15 @@ void WindowedRenderer::render_buffer(BYTE* buffer, ULONG buffer_size)
 {
     uint8_t* monitor_data = nullptr;
     uint64_t monitor_data_size = 0;
-    if (_monitor.lock_data(&monitor_data, &monitor_data_size))
+    if (m_monitor.lock_data(&monitor_data, &monitor_data_size))
     {
         if (buffer && monitor_data && monitor_data_size == buffer_size)
             memcpy(monitor_data, buffer, monitor_data_size);
-        _monitor.unlock_data();
+        m_monitor.unlock_data();
     }
     else  // windows has probaly been closed
     {
         spdlog::warn("Window has been closed");
-        _should_stop = true;
+        m_should_stop = true;
     }
 }

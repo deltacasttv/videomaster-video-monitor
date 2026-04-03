@@ -20,9 +20,9 @@
 #include "VideoMasterHD_Core.h"
 
 #include <atomic>
+#include <exception>
 #include <iostream>
 #include <thread>
-
 
 class WindowedRenderer
 {
@@ -40,17 +40,20 @@ class WindowedRenderer
     void render_buffer(BYTE* buffer, ULONG buffer_size);
     bool stop();
 
+    std::exception_ptr get_thread_exception() const { return m_thread_exception; }
+
  private:
-    std::string _window_title;
-    int         _window_width;
-    int         _window_height;
-    int         _framerate_ms;
+    std::string m_window_title;
+    int         m_window_width;
+    int         m_window_height;
+    int         m_framerate_ms;
 
-    Deltacast::VideoViewer _monitor;
-    std::thread            _monitor_thread;
+    Deltacast::VideoViewer m_monitor;
+    std::thread            m_monitor_thread;
 
-    std::atomic_bool& _should_stop;
-    std::atomic_bool  _monitor_ready;
+    std::atomic_bool&  m_should_stop;
+    std::atomic_bool   m_monitor_ready;
+    std::exception_ptr m_thread_exception;
 
     bool monitor(int image_width, int image_height,
                  Deltacast::VideoViewer::InputFormat input_format);

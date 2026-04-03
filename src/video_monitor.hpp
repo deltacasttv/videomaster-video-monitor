@@ -14,6 +14,7 @@
  */
 
 #include "shared_resources.hpp"
+#include "exceptions.hpp"
 
 #include <CLI/CLI.hpp>
 #include <optional>
