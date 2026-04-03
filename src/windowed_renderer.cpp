@@ -15,16 +15,14 @@
 
 #include "windowed_renderer.hpp"
 
-#include <iostream>
 #include <cstring>
+#include <iostream>
 
-WindowedRenderer::WindowedRenderer(std::string window_title, int window_width, int window_height, int framerate_ms, std::atomic_bool& stop_is_requested)
-    : _window_title(window_title)
-    , _window_width(window_width)
-    , _window_height(window_height)
-    , _framerate_ms(framerate_ms)
-    , _should_stop(stop_is_requested)
-    , _monitor_ready(false)
+
+WindowedRenderer::WindowedRenderer(std::string window_title, int window_width, int window_height,
+                                   int framerate_ms, std::atomic_bool& stop_is_requested)
+    : _window_title(window_title), _window_width(window_width), _window_height(window_height),
+      _framerate_ms(framerate_ms), _should_stop(stop_is_requested), _monitor_ready(false)
 {
 }
 
@@ -33,18 +31,22 @@ WindowedRenderer::~WindowedRenderer()
     stop();
 }
 
-bool WindowedRenderer::init(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format)
+bool WindowedRenderer::init(int image_width, int image_height,
+                            Deltacast::VideoViewer::InputFormat input_format)
 {
-    _monitor_thread = std::thread(&WindowedRenderer::monitor, this, image_width, image_height, input_format);
+    _monitor_thread = std::thread(&WindowedRenderer::monitor, this, image_width, image_height,
+                                  input_format);
     while (!_monitor_ready)
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     return true;
 }
 
-bool WindowedRenderer::monitor(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format)
+bool WindowedRenderer::monitor(int image_width, int image_height,
+                               Deltacast::VideoViewer::InputFormat input_format)
 {
-    if (!_monitor.init(_window_width, _window_height, _window_title.c_str(), image_width, image_height, input_format))
+    if (!_monitor.init(_window_width, _window_height, _window_title.c_str(), image_width,
+                       image_height, input_format))
     {
         std::cout << "ERROR: VideoViewer initialization failed" << std::endl;
         return false;
@@ -73,14 +75,14 @@ void WindowedRenderer::render_buffer(BYTE* buffer, ULONG buffer_size)
 {
     uint8_t* monitor_data = nullptr;
     uint64_t monitor_data_size = 0;
-    if (_monitor.lock_data(&monitor_data, &monitor_data_size)) 
+    if (_monitor.lock_data(&monitor_data, &monitor_data_size))
     {
         if (buffer && monitor_data && monitor_data_size == buffer_size)
             memcpy(monitor_data, buffer, monitor_data_size);
         _monitor.unlock_data();
     }
-    else // windows has probaly been closed
+    else  // windows has probaly been closed
     {
-        _should_stop = true; 
+        _should_stop = true;
     }
 }

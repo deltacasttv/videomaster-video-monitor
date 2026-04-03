@@ -19,16 +19,18 @@
 
 #include "VideoMasterHD_Core.h"
 
+#include <atomic>
 #include <iostream>
 #include <thread>
-#include <atomic>
+
 
 class WindowedRenderer
 {
-public:
-    WindowedRenderer(std::string window_title, int window_width, int window_height, int framerate_ms, std::atomic_bool& stop_is_requested);
+ public:
+    WindowedRenderer(std::string window_title, int window_width, int window_height,
+                     int framerate_ms, std::atomic_bool& stop_is_requested);
     ~WindowedRenderer();
-    
+
     WindowedRenderer(const WindowedRenderer&) = delete;
     WindowedRenderer& operator=(const WindowedRenderer&) = delete;
     WindowedRenderer(WindowedRenderer&&) = delete;
@@ -38,17 +40,18 @@ public:
     void render_buffer(BYTE* buffer, ULONG buffer_size);
     bool stop();
 
-private:
+ private:
     std::string _window_title;
-    int _window_width;
-    int _window_height;
-    int _framerate_ms;
+    int         _window_width;
+    int         _window_height;
+    int         _framerate_ms;
 
     Deltacast::VideoViewer _monitor;
-    std::thread _monitor_thread;
+    std::thread            _monitor_thread;
 
     std::atomic_bool& _should_stop;
-    std::atomic_bool _monitor_ready;
+    std::atomic_bool  _monitor_ready;
 
-    bool monitor(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format);
+    bool monitor(int image_width, int image_height,
+                 Deltacast::VideoViewer::InputFormat input_format);
 };

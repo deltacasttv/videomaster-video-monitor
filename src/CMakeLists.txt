@@ -16,6 +16,7 @@ set(${PROJECT_NAME}_SOURCES
     ${CMAKE_SOURCE_DIR}/src/helper.cpp
     ${CMAKE_SOURCE_DIR}/src/shared_resources.cpp
     ${CMAKE_SOURCE_DIR}/src/windowed_renderer.cpp
+    ${CMAKE_SOURCE_DIR}/src/video_monitor.cpp
 )
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
 

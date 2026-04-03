@@ -22,9 +22,9 @@ namespace Deltacast::VideoMonitor
 {
     struct SharedResources
     {
-        std::atomic_bool stop_is_requested{false};
-        std::atomic_bool incoming_signal_changed{false};
+        std::atomic_bool stop_is_requested{ false };
+        std::atomic_bool incoming_signal_changed{ false };
 
         void reset();
     };
-}
+}  // namespace Deltacast::VideoMonitor
