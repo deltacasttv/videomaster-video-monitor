@@ -19,9 +19,9 @@
 #include <VideoMasterCppApi/helper/sdi.hpp>
 #include <VideoMasterCppApi/to_string.hpp>
 #include <optional>
+#include <sstream>
 #include <thread>
 #include <utility>
-
 
 template <class... Ts>
 struct overloaded : Ts...
@@ -254,40 +254,38 @@ namespace Deltacast::VideoMonitor::Helper
                    stream);
     }
 
-    void print_information(const SignalInformation& signal_information,
-                           const std::string&       prefix /*= ""*/)
+    std::string get_information_string(const SignalInformation& signal_information,
+                                       const std::string&       prefix /*= ""*/)
     {
-        std::visit(overloaded{ [&prefix](const Sdi::SignalInformation& sdi_signal_info)
-                               {
-                                   std::cout << prefix << "Video standard: "
-                                             << Deltacast::Wrapper::to_pretty_string(
-                                                    sdi_signal_info.video_standard)
-                                             << std::endl;
-                                   std::cout << prefix << "Clock divisor: "
-                                             << Deltacast::Wrapper::to_pretty_string(
-                                                    sdi_signal_info.clock_divisor)
-                                             << std::endl;
-                                   std::cout << prefix << "Interface: "
-                                             << Deltacast::Wrapper::to_pretty_string(
-                                                    sdi_signal_info.video_interface)
-                                             << std::endl;
-                               },
-                               [&prefix](const Dv::SignalInformation& dv_signal_info)
-                               {
-                                   std::cout << prefix << dv_signal_info.width << "x"
-                                             << dv_signal_info.height
-                                             << (dv_signal_info.progressive ? "p" : "i")
-                                             << dv_signal_info.framerate << std::endl;
-                                   std::cout << prefix
-                                             << Deltacast::Wrapper::to_pretty_string(
-                                                    dv_signal_info.cable_color_space)
-                                             << std::endl;
-                                   std::cout << prefix
-                                             << Deltacast::Wrapper::to_pretty_string(
-                                                    dv_signal_info.cable_sampling)
-                                             << std::endl;
-                               } },
-                   signal_information);
+        std::ostringstream oss;
+        std::visit(
+            overloaded{
+                [&prefix, &oss](const Sdi::SignalInformation& sdi_signal_info)
+                {
+                    oss << prefix << "Video standard: "
+                        << Deltacast::Wrapper::to_pretty_string(sdi_signal_info.video_standard)
+                        << "\n";
+                    oss << prefix << "Clock divisor: "
+                        << Deltacast::Wrapper::to_pretty_string(sdi_signal_info.clock_divisor)
+                        << "\n";
+                    oss << prefix << "Interface: "
+                        << Deltacast::Wrapper::to_pretty_string(sdi_signal_info.video_interface)
+                        << "\n";
+                },
+                [&prefix, &oss](const Dv::SignalInformation& dv_signal_info)
+                {
+                    oss << prefix << dv_signal_info.width << "x" << dv_signal_info.height
+                        << (dv_signal_info.progressive ? "p" : "i") << dv_signal_info.framerate
+                        << "\n";
+                    oss << prefix
+                        << Deltacast::Wrapper::to_pretty_string(dv_signal_info.cable_color_space)
+                        << "\n";
+                    oss << prefix
+                        << Deltacast::Wrapper::to_pretty_string(dv_signal_info.cable_sampling)
+                        << "\n";
+                } },
+            signal_information);
+        return oss.str();
     }
 
     SignalInformation detect_information(TechStream& stream)

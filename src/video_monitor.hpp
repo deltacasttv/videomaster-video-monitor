@@ -31,5 +31,8 @@ namespace Deltacast::VideoMonitor
         Deltacast::VideoMonitor::SharedResources& m_shared_resources;
         uint32_t                                  m_device_id;
         uint32_t                                  m_stream_id;
+
+        void init_cli();
+        void init_log();
     };
 }  // namespace Deltacast::VideoMonitor

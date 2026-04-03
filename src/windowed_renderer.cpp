@@ -18,6 +18,7 @@
 #include <cstring>
 #include <iostream>
 
+#include <spdlog/spdlog.h>
 
 WindowedRenderer::WindowedRenderer(std::string window_title, int window_width, int window_height,
                                    int framerate_ms, std::atomic_bool& stop_is_requested)
@@ -48,7 +49,7 @@ bool WindowedRenderer::monitor(int image_width, int image_height,
     if (!_monitor.init(_window_width, _window_height, _window_title.c_str(), image_width,
                        image_height, input_format))
     {
-        std::cout << "ERROR: VideoViewer initialization failed" << std::endl;
+        spdlog::error("VideoViewer initialization failed");
         return false;
     }
 
@@ -83,6 +84,7 @@ void WindowedRenderer::render_buffer(BYTE* buffer, ULONG buffer_size)
     }
     else  // windows has probaly been closed
     {
+        spdlog::warn("Window has been closed");
         _should_stop = true;
     }
 }

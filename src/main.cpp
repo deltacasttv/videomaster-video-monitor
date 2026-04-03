@@ -23,6 +23,7 @@
 #include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterCppApi/exception.hpp>
 #include <VideoMasterCppApi/to_string.hpp>
+#include <spdlog/spdlog.h>
 
 #include "shared_resources.hpp"
 #include "video_monitor.hpp"
@@ -46,13 +47,13 @@ int main(int argc, char** argv)
     }
     catch (const Deltacast::Wrapper::ApiException& e)
     {
-        std::cerr << e.what() << std::endl;
-        std::cerr << e.logs() << std::endl;
+        spdlog::error("API Exception: {}", e.what());
+        spdlog::error("Logs: {}", e.logs());
         return EXIT_FAILURE;
     }
     catch (const std::exception& e)
     {
-        std::cerr << e.what() << std::endl;
+        spdlog::error("Exception: {}", e.what());
         return EXIT_FAILURE;
     }
 }

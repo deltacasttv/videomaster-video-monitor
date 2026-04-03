@@ -17,13 +17,11 @@
 #include <iostream>
 #include <variant>
 
-
 #include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterCppApi/helper/video.hpp>
 #include <VideoMasterCppApi/stream/dv/dv_stream.hpp>
 #include <VideoMasterCppApi/stream/ip/st2110_stream.hpp>
 #include <VideoMasterCppApi/stream/sdi/sdi_stream.hpp>
-
 
 std::ostream& operator<<(std::ostream& os, Deltacast::Wrapper::Board& board);
 
@@ -84,9 +82,9 @@ namespace Deltacast::VideoMonitor::Helper
     TechStream open_stream(Deltacast::Wrapper::Board& board, VHD_STREAMTYPE stream_type);
     Deltacast::Wrapper::Stream& to_base_stream(TechStream& stream);
 
-    void configure_stream(TechStream& stream, const SignalInformation& signal_information);
-    void print_information(const SignalInformation& signal_information,
-                           const std::string&       prefix = "");
+    void        configure_stream(TechStream& stream, const SignalInformation& signal_information);
+    std::string get_information_string(const SignalInformation& signal_information,
+                                       const std::string&       prefix = "");
     SignalInformation detect_information(TechStream& stream);
 
     Deltacast::Wrapper::Helper::VideoCharacteristics
