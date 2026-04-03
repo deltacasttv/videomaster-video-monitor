@@ -30,8 +30,9 @@ namespace Deltacast::VideoMonitor
      private:
         CLI::App                                  m_app;
         Deltacast::VideoMonitor::SharedResources& m_shared_resources;
-        uint32_t                                  m_device_id;
-        uint32_t                                  m_stream_id;
+        uint32_t                                  m_device_id = 0;
+        uint32_t                                  m_stream_id = 0;
+        bool                                      m_use_ip_mode = false;
 
         void init_cli();
         void init_log();

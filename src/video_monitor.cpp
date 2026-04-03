@@ -40,6 +40,7 @@ namespace Deltacast::VideoMonitor
 
     int VideoMonitorApp::run(int argc, char** argv)
     {
+
         CLI11_PARSE(m_app, argc, argv);
 
         spdlog::info("VideoMaster video-monitor ({})", VERSTRING);
@@ -144,8 +145,22 @@ namespace Deltacast::VideoMonitor
 
     void VideoMonitorApp::init_cli()
     {
-        m_app.add_option("-d,--device", m_device_id, "ID of the device to use");
-        m_app.add_option("-i,--input", m_stream_id, "ID of the input connector to use");
+        m_app.add_option("-d,--device", m_device_id, "ID of the device to use")
+            ->check(CLI::Range(0));
+
+        auto* sdi_dv_group = m_app.add_option_group("SDI/DV options");
+        auto* input_opt = sdi_dv_group
+                              ->add_option("-i,--input", m_stream_id,
+                                           "ID of the input connector to use")
+                              ->check(CLI::Range(0));
+
+        auto* ip_group = m_app.add_option_group("IP options");
+        auto* ip_mode_flag = ip_group->add_flag("--ip-mode", m_use_ip_mode,
+                                                "Use IP board as input (instead of SDI or HDMI)");
+
+        input_opt->excludes(ip_mode_flag);
+
+        // Ip parameters only (unicast or multicast mode)
     }
     void VideoMonitorApp::init_log()
     {
@@ -154,6 +169,7 @@ namespace Deltacast::VideoMonitor
         auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("video_monitor.log",
                                                                              true);
         file_sink->set_pattern("[%Y-%b-%d %T.%e] [%l] %v");
+        console_sink->set_pattern("%v");
         spdlog::sinks_init_list sinks = { console_sink, file_sink };
         auto                    logger = std::make_shared<spdlog::logger>("multi_sink", sinks);
         spdlog::set_default_logger(logger);
