@@ -30,38 +30,66 @@ using namespace std::chrono_literals;
 
 namespace Deltacast::VideoMonitor
 {
+    namespace
+    {
+        constexpr auto log_pattern = "[%Y-%b-%d %T.%e] [%l] %v";
+        constexpr auto log_file_name = "video_monitor.log";
+
+    }  // namespace
     VideoMonitorApp::VideoMonitorApp(SharedResources& shared_resources)
         : m_app{ "Identify an incoming signal and display it on the screen" },
           m_shared_resources{ shared_resources }
     {
-        init_log();
         init_cli();
+    }
+
+    bool VideoMonitorApp::check_device_id()
+    {
+        if (m_device_id >= Deltacast::Wrapper::Board::count())
+        {
+            spdlog::error("Invalid device ID");
+            return false;
+        }
+        return true;
     }
 
     int VideoMonitorApp::run(int argc, char** argv)
     {
-
         CLI11_PARSE(m_app, argc, argv);
 
-        spdlog::info("VideoMaster video-monitor ({})", VERSTRING);
+        init_log();
 
-        spdlog::info("VideoMaster API version: {}", Deltacast::Wrapper::api_version());
+        spdlog::trace("VideoMaster video-monitor ({})", VERSTRING);
+
+        spdlog::debug("VideoMaster API version: {}", Deltacast::Wrapper::api_version());
         spdlog::trace("Discovered {} devices", Deltacast::Wrapper::Board::count());
 
-        if (m_device_id >= Deltacast::Wrapper::Board::count())
-        {
-            spdlog::error("Invalid device ID");
+        if (!check_device_id())
             return static_cast<int>(ExitCode::FailureUnexpected);
-        }
 
         spdlog::debug("Opening device {}", m_device_id);
         auto board = Deltacast::Wrapper::Board::open(
             m_device_id, [this](Deltacast::Wrapper::Board& board)
             { Deltacast::VideoMonitor::Helper::enable_loopback(board, m_stream_id); });
-
         spdlog::trace("Opened device {}", m_device_id);
 
-        Deltacast::VideoMonitor::Helper::disable_loopback(board, m_stream_id);
+        if (m_sdp_file_path.has_value())
+        {
+            spdlog::debug("SDP file has been provided, board should be an IP board");
+            if (board.has_ip())
+            {
+                spdlog::trace("Board has IP capabilities");
+            }
+            else
+            {
+                spdlog::error("Board does not have IP capability");
+                return static_cast<int>(ExitCode::FailureUnexpected);
+            }
+        }
+        else
+        {
+            Deltacast::VideoMonitor::Helper::disable_loopback(board, m_stream_id);
+        }
 
         while (!m_shared_resources.stop_is_requested)
         {
@@ -145,33 +173,47 @@ namespace Deltacast::VideoMonitor
 
     void VideoMonitorApp::init_cli()
     {
-        m_app.add_option("-d,--device", m_device_id, "ID of the device to use")
-            ->check(CLI::Range(0));
+        m_app.set_version_flag("-v,--version", VERSTRING);
 
-        auto* sdi_dv_group = m_app.add_option_group("SDI/DV options");
-        auto* input_opt = sdi_dv_group
-                              ->add_option("-i,--input", m_stream_id,
-                                           "ID of the input connector to use")
-                              ->check(CLI::Range(0));
+        m_app
+            .add_option("--log-level,-l", m_log_level,
+                        "Log level: trace, debug, info, warn, error, critical, off")
+            ->check(CLI::IsMember({ "trace", "debug", "info", "warn", "error", "critical", "off" }))
+            ->capture_default_str()
+            ->default_str("info");
+        m_app.add_option("--log-directory", m_log_directory, "Directory for the log file")
+            ->check(CLI::ExistingDirectory)
+            ->default_str(".")
+            ->capture_default_str();
 
-        auto* ip_group = m_app.add_option_group("IP options");
-        auto* ip_mode_flag = ip_group->add_flag("--ip-mode", m_use_ip_mode,
-                                                "Use IP board as input (instead of SDI or HDMI)");
+        auto* common_option_group = m_app.add_option_group("Common options");
+        common_option_group->add_option("-d,--device", m_device_id, "ID of the device to use")
+            ->check(CLI::NonNegativeNumber);
+        common_option_group
+            ->add_option("-i,--input", m_stream_id, "ID of the input connector to use")
+            ->check(CLI::NonNegativeNumber);
 
-        input_opt->excludes(ip_mode_flag);
-
-        // Ip parameters only (unicast or multicast mode)
+        auto* ip_board_option_group = m_app.add_option_group("IP board options");
+        ip_board_option_group
+            ->add_option("--sdp-file,-s", m_sdp_file_path, "Path to save the SDP file for IP input")
+            ->check(CLI::ExistingFile)
+            ->capture_default_str();
     }
+
     void VideoMonitorApp::init_log()
     {
-        spdlog::set_level(spdlog::level::info);
+        auto log_level = spdlog::level::from_str(m_log_level);
+        auto log_file = (m_log_directory / log_file_name).string();
         auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("video_monitor.log",
-                                                                             true);
-        file_sink->set_pattern("[%Y-%b-%d %T.%e] [%l] %v");
-        console_sink->set_pattern("%v");
+        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_file, true);
+        file_sink->set_pattern(log_pattern);
+        if (log_level < spdlog::level::info)
+            console_sink->set_pattern(log_pattern);
+        else
+            console_sink->set_pattern("%v");
         spdlog::sinks_init_list sinks = { console_sink, file_sink };
         auto                    logger = std::make_shared<spdlog::logger>("multi_sink", sinks);
+        logger->set_level(log_level);
         spdlog::set_default_logger(logger);
     }
 }  // namespace Deltacast::VideoMonitor

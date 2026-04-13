@@ -1,0 +1,11 @@
+[requires]
+cli11/[>=2 <3]
+spdlog/[>=1 <2]
+video-viewer/[>=2 <3]
+
+[generators]
+CMakeToolchain
+CMakeDeps
+
+[layout]
+cmake_layout

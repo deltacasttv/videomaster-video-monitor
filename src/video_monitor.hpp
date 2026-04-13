@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-#include "shared_resources.hpp"
 #include "exceptions.hpp"
+#include "shared_resources.hpp"
 
 #include <CLI/CLI.hpp>
+#include <filesystem>
 #include <optional>
 
 namespace Deltacast::VideoMonitor
@@ -32,9 +33,14 @@ namespace Deltacast::VideoMonitor
         Deltacast::VideoMonitor::SharedResources& m_shared_resources;
         uint32_t                                  m_device_id = 0;
         uint32_t                                  m_stream_id = 0;
-        bool                                      m_use_ip_mode = false;
+        std::optional<std::filesystem::path>      m_sdp_file_path;
+        std::string                               m_log_level = "info";
+        std::filesystem::path                     m_log_directory = ".";
 
         void init_cli();
         void init_log();
+
+        bool check_device_id();
+        bool check_stream_id();
     };
 }  // namespace Deltacast::VideoMonitor

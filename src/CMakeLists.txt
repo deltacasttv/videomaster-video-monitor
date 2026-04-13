@@ -25,7 +25,8 @@ add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
 # VideoMaster SDK
 find_package(CLI11 REQUIRED)
 find_package(spdlog REQUIRED)
+find_package(video-viewer REQUIRED)
 find_package(VideoMasterHD 6.30 REQUIRED)
 FetchContent_MakeAvailable(VideoMasterCppApi)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE VideoMasterCppApi video-viewer CLI11::CLI11 spdlog::spdlog)
+target_link_libraries(${PROJECT_NAME} PRIVATE VideoMasterCppApi video-viewer CLI11::CLI11 spdlog::spdlog video-viewer::video-viewer)
