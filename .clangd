@@ -1,0 +1,14 @@
+Diagnostics:
+  UnusedIncludes: Strict
+  MissingIncludes: Strict
+  ClangTidy:
+    Add: ["readability-*", "bugprone-*", "modernize-*"]
+
+CompileFlags:
+  CompilationDatabase: build/Debug
+  Remove:
+    - -fcolor-diagnostics
+    - /showIncludes
+
+Index:
+  Background: Build

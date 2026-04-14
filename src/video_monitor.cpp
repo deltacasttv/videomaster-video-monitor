@@ -14,7 +14,9 @@
  */
 
 #include "video_monitor.hpp"
-#include "helper.hpp"
+#include "exceptions.hpp"
+#include "input_session_factory.hpp"
+#include "shared_resources.hpp"
 #include "version.hpp"
 #include "windowed_renderer.hpp"
 
@@ -22,9 +24,15 @@
 #include <VideoMasterCppApi/api.hpp>
 #include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterCppApi/exception.hpp>
+#include <chrono>
+#include <exception>
+#include <memory>
+#include <spdlog/common.h>
+#include <spdlog/logger.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
+#include <videoviewer/videoviewer.hpp>
 
 using namespace std::chrono_literals;
 
@@ -34,6 +42,7 @@ namespace Deltacast::VideoMonitor
     {
         constexpr auto log_pattern = "[%Y-%b-%d %T.%e] [%l] %v";
         constexpr auto log_file_name = "video_monitor.log";
+        constexpr auto window_refresh_interval = 10ms;
 
     }  // namespace
     VideoMonitorApp::VideoMonitorApp(SharedResources& shared_resources)
@@ -43,7 +52,7 @@ namespace Deltacast::VideoMonitor
         init_cli();
     }
 
-    bool VideoMonitorApp::check_device_id()
+    auto VideoMonitorApp::check_device_id() const -> bool
     {
         if (m_device_id >= Deltacast::Wrapper::Board::count())
         {
@@ -53,7 +62,7 @@ namespace Deltacast::VideoMonitor
         return true;
     }
 
-    int VideoMonitorApp::run(int argc, char** argv)
+    auto VideoMonitorApp::run(int argc, char** argv) -> int
     {
         CLI11_PARSE(m_app, argc, argv);
 
@@ -65,100 +74,59 @@ namespace Deltacast::VideoMonitor
         spdlog::trace("Discovered {} devices", Deltacast::Wrapper::Board::count());
 
         if (!check_device_id())
+        {
             return static_cast<int>(ExitCode::FailureUnexpected);
+        }
+
+        auto session = Deltacast::VideoMonitor::Session::InputSessionFactory::create_input_session(
+            m_device_id, m_stream_id, m_sdp_file_path, m_shared_resources);
 
         spdlog::debug("Opening device {}", m_device_id);
-        auto board = Deltacast::Wrapper::Board::open(
-            m_device_id, [this](Deltacast::Wrapper::Board& board)
-            { Deltacast::VideoMonitor::Helper::enable_loopback(board, m_stream_id); });
+        session->open_board();
         spdlog::trace("Opened device {}", m_device_id);
-
-        if (m_sdp_file_path.has_value())
-        {
-            spdlog::debug("SDP file has been provided, board should be an IP board");
-            if (board.has_ip())
-            {
-                spdlog::trace("Board has IP capabilities");
-            }
-            else
-            {
-                spdlog::error("Board does not have IP capability");
-                return static_cast<int>(ExitCode::FailureUnexpected);
-            }
-        }
-        else
-        {
-            Deltacast::VideoMonitor::Helper::disable_loopback(board, m_stream_id);
-        }
 
         while (!m_shared_resources.stop_is_requested)
         {
             m_shared_resources.reset();
 
             spdlog::debug("Opening RX{} stream...", m_stream_id);
-            auto rx_tech_stream = Deltacast::VideoMonitor::Helper::open_stream(
-                board, Deltacast::VideoMonitor::Helper::rx_index_to_streamtype(m_stream_id));
-            auto& rx_stream = Deltacast::VideoMonitor::Helper::to_base_stream(rx_tech_stream);
+            session->prepare_stream();
+            session->configure_stream();
 
-            spdlog::trace("Waiting for signal...");
-            if (!Deltacast::VideoMonitor::Helper::wait_for_input(
-                    board.rx(m_stream_id), m_shared_resources.stop_is_requested))
-            {
-                spdlog::error("Application has been stopped before any input was received.");
-                return static_cast<int>(ExitCode::StopRequestedBeforeSignal);
-            }
+            const auto& video_characteristics = session->get_video_characteristics();
 
-            auto signal_information = Deltacast::VideoMonitor::Helper::detect_information(
-                rx_tech_stream);
-            auto video_characteristics = Deltacast::VideoMonitor::Helper::get_video_characteristics(
-                signal_information);
-            spdlog::info("Detected: {}",
-                         Deltacast::VideoMonitor::Helper::get_information_string(signal_information,
-                                                                                 "\t"));
-
-            rx_stream.buffer_queue().set_depth(8);
-            rx_stream.set_buffer_packing(VHD_BUFPACK_VIDEO_YUV422_8);
-            Deltacast::VideoMonitor::Helper::configure_stream(rx_tech_stream, signal_information);
-
-            auto             window_refresh_interval = 10ms;
-            WindowedRenderer renderer("Live Content", video_characteristics.width / 2,
-                                      video_characteristics.height / 2,
-                                      window_refresh_interval.count(),
-                                      m_shared_resources.stop_is_requested);
+            Deltacast::VideoMonitor::Renderer::WindowedRenderer renderer(
+                { "Live Content", static_cast<int>(video_characteristics.width / 2),
+                  static_cast<int>(video_characteristics.height / 2),
+                  static_cast<int>(window_refresh_interval.count()) },
+                m_shared_resources.stop_is_requested);
             spdlog::trace("Initializing live content rendering window...");
-            renderer.init(video_characteristics.width, video_characteristics.height,
+            renderer.init(static_cast<int>(video_characteristics.width),
+                          static_cast<int>(video_characteristics.height),
                           Deltacast::VideoViewer::InputFormat::ycbcr_422_8);
 
             spdlog::trace("Starting RX stream...");
-            rx_stream.start();
+            session->start_stream();
 
             while (!m_shared_resources.stop_is_requested &&
                    !m_shared_resources.incoming_signal_changed)
             {
-                if (!Deltacast::VideoMonitor::Helper::wait_for_input(
-                        board.rx(m_stream_id), m_shared_resources.stop_is_requested))
-                {
-                    std::this_thread::sleep_for(100ms);
-                    continue;
-                }
-
-                if (Deltacast::VideoMonitor::Helper::detect_information(rx_tech_stream) !=
-                    signal_information)
+                if (session->input_has_changed())
                 {
                     m_shared_resources.incoming_signal_changed = true;
                     continue;
                 }
 
                 {
-                    auto slot = rx_stream.pop_slot();
-                    auto [buffer, buffer_size] = slot->video().buffer();
+                    auto [buffer, buffer_size] = session->get_video_buffer();
 
                     renderer.render_buffer(buffer, buffer_size);
                 }
 
-                spdlog::trace("Slots count: {} (dropped: {})",
-                              rx_stream.buffer_queue().slots_count(),
-                              rx_stream.buffer_queue().slots_dropped());
+                {
+                    auto [slots_count, slots_dropped] = session->get_slots_statistics();
+                    spdlog::trace("Slots count: {} (dropped: {})", slots_count, slots_dropped);
+                }
             }
 
             // Check if renderer thread had an exception
@@ -208,9 +176,13 @@ namespace Deltacast::VideoMonitor
         auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_file, true);
         file_sink->set_pattern(log_pattern);
         if (log_level < spdlog::level::info)
+        {
             console_sink->set_pattern(log_pattern);
+        }
         else
+        {
             console_sink->set_pattern("%v");
+        }
         spdlog::sinks_init_list sinks = { console_sink, file_sink };
         auto                    logger = std::make_shared<spdlog::logger>("multi_sink", sinks);
         logger->set_level(log_level);

@@ -13,12 +13,13 @@
  * limitations under the License.
  */
 
-#include "exceptions.hpp"
 #include "shared_resources.hpp"
 
 #include <CLI/CLI.hpp>
+#include <cstdint>
 #include <filesystem>
 #include <optional>
+#include <string>
 
 namespace Deltacast::VideoMonitor
 {
@@ -26,7 +27,7 @@ namespace Deltacast::VideoMonitor
     {
      public:
         VideoMonitorApp(SharedResources& shared_resources);
-        int run(int argc, char** argv);
+        auto run(int argc, char** argv) -> int;
 
      private:
         CLI::App                                  m_app;
@@ -40,7 +41,6 @@ namespace Deltacast::VideoMonitor
         void init_cli();
         void init_log();
 
-        bool check_device_id();
-        bool check_stream_id();
+        [[nodiscard]] auto check_device_id() const -> bool;
     };
 }  // namespace Deltacast::VideoMonitor

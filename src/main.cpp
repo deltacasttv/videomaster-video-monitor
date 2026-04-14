@@ -13,21 +13,19 @@
  * limitations under the License.
  */
 
+#include "exceptions.hpp"
+#include "shared_resources.hpp"
+#include "video_monitor.hpp"
+
 #include <CLI/CLI.hpp>
-
-#include <atomic>
-#include <csignal>
-#include <memory>
-
 #include <VideoMasterCppApi/api.hpp>
 #include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterCppApi/exception.hpp>
 #include <VideoMasterCppApi/to_string.hpp>
+#include <atomic>
+#include <csignal>
+#include <exception>
 #include <spdlog/spdlog.h>
-
-#include "exceptions.hpp"
-#include "shared_resources.hpp"
-#include "video_monitor.hpp"
 
 Deltacast::VideoMonitor::SharedResources shared_resources;
 
@@ -46,7 +44,7 @@ int main(int argc, char** argv)
 
         return app.run(argc, argv);
     }
-    catch (const Deltacast::VideoMonitor::ApplicationException& e)
+    catch (const Deltacast::VideoMonitor::Exceptions::VideoMonitorException& e)
     {
         spdlog::error("Application Exception: {}", e.what());
         return static_cast<int>(Deltacast::VideoMonitor::ExitCode::FailureUnexpected);

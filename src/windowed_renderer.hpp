@@ -21,40 +21,51 @@
 
 #include <atomic>
 #include <exception>
-#include <iostream>
+#include <string>
 #include <thread>
 
-class WindowedRenderer
+namespace Deltacast::VideoMonitor::Renderer
 {
- public:
-    WindowedRenderer(std::string window_title, int window_width, int window_height,
-                     int framerate_ms, std::atomic_bool& stop_is_requested);
-    ~WindowedRenderer();
 
-    WindowedRenderer(const WindowedRenderer&) = delete;
-    WindowedRenderer& operator=(const WindowedRenderer&) = delete;
-    WindowedRenderer(WindowedRenderer&&) = delete;
-    WindowedRenderer& operator=(WindowedRenderer&&) = delete;
+    class WindowedRenderer
+    {
+     public:
+        struct Config
+        {
+            std::string window_title;
+            int         window_width;
+            int         window_height;
+            int         framerate_ms;
+        };
+        WindowedRenderer(const Config& config, std::atomic_bool& stop_is_requested);
+        ~WindowedRenderer();
 
-    bool init(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format);
-    void render_buffer(BYTE* buffer, ULONG buffer_size);
-    bool stop();
+        WindowedRenderer(const WindowedRenderer&) = delete;
+        auto operator=(const WindowedRenderer&) -> WindowedRenderer& = delete;
+        WindowedRenderer(WindowedRenderer&&) = delete;
+        auto operator=(WindowedRenderer&&) -> WindowedRenderer& = delete;
 
-    std::exception_ptr get_thread_exception() const { return m_thread_exception; }
+        auto init(int image_width, int image_height,
+                  Deltacast::VideoViewer::InputFormat input_format) -> bool;
+        void render_buffer(BYTE* buffer, ULONG buffer_size);
+        auto stop() -> bool;
 
- private:
-    std::string m_window_title;
-    int         m_window_width;
-    int         m_window_height;
-    int         m_framerate_ms;
+        auto get_thread_exception() const -> std::exception_ptr { return m_thread_exception; }
 
-    Deltacast::VideoViewer m_monitor;
-    std::thread            m_monitor_thread;
+     private:
+        std::string m_window_title;
+        int         m_window_width;
+        int         m_window_height;
+        int         m_framerate_ms;
 
-    std::atomic_bool&  m_should_stop;
-    std::atomic_bool   m_monitor_ready;
-    std::exception_ptr m_thread_exception;
+        Deltacast::VideoViewer m_monitor;
+        std::thread            m_monitor_thread;
 
-    bool monitor(int image_width, int image_height,
-                 Deltacast::VideoViewer::InputFormat input_format);
-};
+        std::atomic_bool&  m_should_stop;
+        std::atomic_bool   m_monitor_ready;
+        std::exception_ptr m_thread_exception;
+
+        auto monitor(int image_width, int image_height,
+                     Deltacast::VideoViewer::InputFormat input_format) -> bool;
+    };
+}  // namespace Deltacast::VideoMonitor::Renderer

@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include <cstdint>
+#include <fmt/format.h>
 #include <stdexcept>
 #include <string>
 
@@ -28,64 +30,101 @@ namespace Deltacast::VideoMonitor
         FailureUnexpected = 1
     };
 
-    // Custom exceptions
-    class ApplicationException : public std::runtime_error
+    namespace Exceptions
     {
-     public:
-        explicit ApplicationException(const std::string& message) : std::runtime_error(message) {}
-    };
 
-    class SignalDetectionException : public ApplicationException
-    {
-     public:
-        explicit SignalDetectionException(const std::string& message)
-            : ApplicationException("Signal Detection Error: " + message)
+        // Custom exceptions
+        class VideoMonitorException : public std::runtime_error
         {
-        }
-    };
+         public:
+            explicit VideoMonitorException(const std::string& message) : std::runtime_error(message)
+            {
+            }
+        };
 
-    class SignalConfigurationException : public ApplicationException
-    {
-     public:
-        explicit SignalConfigurationException(const std::string& message)
-            : ApplicationException("Signal Configuration Error: " + message)
+        class SignalDetectionException : public VideoMonitorException
         {
-        }
-    };
+         public:
+            explicit SignalDetectionException(const std::string& message)
+                : VideoMonitorException(fmt::format("Signal Detection Error: {}", message))
+            {
+            }
+        };
 
-    class RendererException : public ApplicationException
-    {
-     public:
-        explicit RendererException(const std::string& message)
-            : ApplicationException("Renderer Error: " + message)
+        class SignalConfigurationException : public VideoMonitorException
         {
-        }
-    };
+         public:
+            explicit SignalConfigurationException(const std::string& message)
+                : VideoMonitorException(fmt::format("Signal Configuration Error: {}", message))
+            {
+            }
+        };
 
-    class RendererInitializationException : public RendererException
-    {
-     public:
-        explicit RendererInitializationException(const std::string& message)
-            : RendererException("Initialization failed: " + message)
+        class RendererException : public VideoMonitorException
         {
-        }
-    };
+         public:
+            explicit RendererException(const std::string& message)
+                : VideoMonitorException(fmt::format("Renderer Error: {}", message))
+            {
+            }
+        };
 
-    class DeviceException : public ApplicationException
-    {
-     public:
-        explicit DeviceException(const std::string& message)
-            : ApplicationException("Device Error: " + message)
+        class RendererInitializationException : public RendererException
         {
-        }
-    };
+         public:
+            explicit RendererInitializationException(const std::string& message)
+                : RendererException(fmt::format("Initialization failed: {}", message))
+            {
+            }
+        };
 
-    class StreamException : public ApplicationException
-    {
-     public:
-        explicit StreamException(const std::string& message)
-            : ApplicationException("Stream Error: " + message)
+        class DeviceException : public VideoMonitorException
         {
-        }
-    };
+         public:
+            explicit DeviceException(const std::string& message)
+                : VideoMonitorException(fmt::format("Device Error: {}", message))
+            {
+            }
+        };
+
+        class StreamException : public VideoMonitorException
+        {
+         public:
+            explicit StreamException(const std::string& message)
+                : VideoMonitorException(fmt::format("Stream Error: {}", message))
+            {
+            }
+        };
+
+        class StreamNotPreparedException : public StreamException
+        {
+         public:
+            explicit StreamNotPreparedException(uint32_t stream_id)
+                : StreamException(
+                      fmt::format("Stream must be prepared before configuring it (Stream ID: {})",
+                                  stream_id))
+            {
+            }
+        };
+
+        class BoardNotOpenedException : public DeviceException
+        {
+         public:
+            explicit BoardNotOpenedException(uint32_t device_id)
+                : DeviceException(fmt::format(
+                      "Board must be opened before preparing the stream (Device ID: {})",
+                      device_id))
+            {
+            }
+        };
+
+        class UnsupportedChannelTypeException : public DeviceException
+        {
+         public:
+            explicit UnsupportedChannelTypeException(const std::string& channel_type)
+                : DeviceException(fmt::format("Unsupported channel type: {}", channel_type))
+            {
+            }
+        };
+    }  // namespace Exceptions
 }  // namespace Deltacast::VideoMonitor

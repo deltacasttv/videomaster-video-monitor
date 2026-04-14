@@ -16,316 +16,73 @@
 #include "helper.hpp"
 #include "exceptions.hpp"
 
+#include <VideoMasterCppApi/board/board.hpp>
+#include <VideoMasterCppApi/board/rx/rx.hpp>
 #include <VideoMasterCppApi/exception.hpp>
 #include <VideoMasterCppApi/helper/sdi.hpp>
 #include <VideoMasterCppApi/to_string.hpp>
-#include <optional>
-#include <sstream>
+#include <VideoMasterHD_Core.h>
+#include <array>
+#include <atomic>
+#include <chrono>
+#include <cstdint>
+#include <ios>
+#include <ostream>
 #include <thread>
-#include <utility>
 
-template <class... Ts>
-struct overloaded : Ts...
+auto operator<<(std::ostream& output_stream, Deltacast::Wrapper::Board& board) -> std::ostream&
 {
-    using Ts::operator()...;
-};
-template <class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
-
-std::ostream& operator<<(std::ostream& os, Deltacast::Wrapper::Board& board)
-{
-    os << "\t" << "Board " << board.index() << ":  [ " << board.name() << " ]" << std::endl;
-    os << "\t" << "\t" << "- " << board.number_of_rx() << " RX / " << board.number_of_tx() << " TX"
-       << std::endl;
-    os << "\t" << "\t" << "- Driver: " << board.driver_version() << std::endl;
-    os << "\t" << "\t" << "- PCIe ID: " << board.pcie_identifier() << std::endl;
-    os << "\t" << "\t" << "- SN: " << board.serial_number() << std::endl;
+    output_stream << "\t" << "Board " << board.index() << ":  [ " << board.name() << " ]"
+                  << std::endl;
+    output_stream << "\t" << "\t" << "- " << board.number_of_rx() << " RX / "
+                  << board.number_of_tx() << " TX" << std::endl;
+    output_stream << "\t" << "\t" << "- Driver: " << board.driver_version() << std::endl;
+    output_stream << "\t" << "\t" << "- PCIe ID: " << board.pcie_identifier() << std::endl;
+    output_stream << "\t" << "\t" << "- SN: " << board.serial_number() << std::endl;
     auto [pcie_bus, number_of_lanes] = board.pcie();
-    os << "\t" << "\t" << "- " << Deltacast::Wrapper::to_pretty_string(pcie_bus) << ", "
-       << number_of_lanes << " lanes" << std::endl;
+    output_stream << "\t" << "\t" << "- " << Deltacast::Wrapper::to_pretty_string(pcie_bus) << ", "
+                  << number_of_lanes << " lanes" << std::endl;
 
-    os << std::hex;
-    os << "\t" << "\t" << "- Firmware: 0x" << board.fpga().version() << std::endl;
+    output_stream << std::hex;
+    output_stream << "\t" << "\t" << "- Firmware: 0x" << board.fpga().version() << std::endl;
     if (board.has_scp())
-        os << "\t" << "\t" << "- SCP: 0x" << board.scp().version() << std::endl;
-    os << std::dec;
+    {
+        output_stream << "\t" << "\t" << "- SCP: 0x" << board.scp().version() << std::endl;
+    }
+    output_stream << std::dec;
 
-    return os;
+    return output_stream;
 }
 
 namespace Deltacast::VideoMonitor::Helper
 {
     namespace
     {
-        std::optional<std::reference_wrapper<Deltacast::Wrapper::BoardComponents::Loopback>>
-        get_loopback(Deltacast::Wrapper::Board& board, unsigned int channel_index)
-        {
-            try
-            {
-                return board.firmware_loopback(channel_index);
-            }
-            catch (const Deltacast::Wrapper::UnavailableResource& e)
-            {
-            }
-            try
-            {
-                return board.active_loopback(channel_index);
-            }
-            catch (const Deltacast::Wrapper::UnavailableResource& e)
-            {
-            }
-            try
-            {
-                return board.passive_loopback(channel_index);
-            }
-            catch (const Deltacast::Wrapper::UnavailableResource& e)
-            {
-            }
-            return std::nullopt;
-        }
+        constexpr std::array<VHD_STREAMTYPE, 12> rx_stream_types = {
+            VHD_ST_RX0, VHD_ST_RX1, VHD_ST_RX2, VHD_ST_RX3, VHD_ST_RX4,  VHD_ST_RX5,
+            VHD_ST_RX6, VHD_ST_RX7, VHD_ST_RX8, VHD_ST_RX9, VHD_ST_RX10, VHD_ST_RX11
+        };
 
-        VHD_CHANNELTYPE stream_type_to_channel_type(Deltacast::Wrapper::Board& board,
-                                                    VHD_STREAMTYPE             stream_type)
-        {
-            switch (stream_type)
-            {
-            case VHD_ST_RX0:
-                return board.rx(0).type();
-            case VHD_ST_RX1:
-                return board.rx(1).type();
-            case VHD_ST_RX2:
-                return board.rx(2).type();
-            case VHD_ST_RX3:
-                return board.rx(3).type();
-            case VHD_ST_RX4:
-                return board.rx(4).type();
-            case VHD_ST_RX5:
-                return board.rx(5).type();
-            case VHD_ST_RX6:
-                return board.rx(6).type();
-            case VHD_ST_RX7:
-                return board.rx(7).type();
-            case VHD_ST_RX8:
-                return board.rx(8).type();
-            case VHD_ST_RX9:
-                return board.rx(9).type();
-            case VHD_ST_RX10:
-                return board.rx(10).type();
-            case VHD_ST_RX11:
-                return board.rx(11).type();
-            case VHD_ST_TX0:
-                return board.tx(0).type();
-            case VHD_ST_TX1:
-                return board.tx(1).type();
-            case VHD_ST_TX2:
-                return board.tx(2).type();
-            case VHD_ST_TX3:
-                return board.tx(3).type();
-            case VHD_ST_TX4:
-                return board.tx(4).type();
-            case VHD_ST_TX5:
-                return board.tx(5).type();
-            case VHD_ST_TX6:
-                return board.tx(6).type();
-            case VHD_ST_TX7:
-                return board.tx(7).type();
-            case VHD_ST_TX8:
-                return board.tx(8).type();
-            case VHD_ST_TX9:
-                return board.tx(9).type();
-            case VHD_ST_TX10:
-                return board.tx(10).type();
-            case VHD_ST_TX11:
-                return board.tx(11).type();
-            default:
-                throw std::invalid_argument("Invalid stream type");
-            }
-        }
+        constexpr uint32_t wait_for_input_timeout_ms = 100;
     }  // namespace
 
-    void enable_loopback(Deltacast::Wrapper::Board& board, unsigned int channel_index)
+    auto rx_index_to_streamtype(unsigned int rx_index) -> VHD_STREAMTYPE
     {
-        auto optional_loopback = get_loopback(board, channel_index);
-        if (optional_loopback)
-            optional_loopback.value().get().enable();
-    }
-
-    void disable_loopback(Deltacast::Wrapper::Board& board, unsigned int channel_index)
-    {
-        auto optional_loopback = get_loopback(board, channel_index);
-        if (optional_loopback)
-            optional_loopback.value().get().disable();
-    }
-
-    VHD_STREAMTYPE rx_index_to_streamtype(unsigned int rx_index)
-    {
-        switch (rx_index)
+        if (rx_index >= rx_stream_types.size())
         {
-        case 0:
-            return VHD_ST_RX0;
-        case 1:
-            return VHD_ST_RX1;
-        case 2:
-            return VHD_ST_RX2;
-        case 3:
-            return VHD_ST_RX3;
-        case 4:
-            return VHD_ST_RX4;
-        case 5:
-            return VHD_ST_RX5;
-        case 6:
-            return VHD_ST_RX6;
-        case 7:
-            return VHD_ST_RX7;
-        case 8:
-            return VHD_ST_RX8;
-        case 9:
-            return VHD_ST_RX9;
-        case 10:
-            return VHD_ST_RX10;
-        case 11:
-            return VHD_ST_RX11;
-        default:
-            throw Deltacast::VideoMonitor::SignalDetectionException("Invalid RX index");
+            throw Deltacast::VideoMonitor::Exceptions::SignalDetectionException("Invalid RX index");
         }
+        return rx_stream_types[rx_index];
     }
 
-    bool wait_for_input(Deltacast::Wrapper::BoardComponents::RxConnector& rx_connector,
-                        const std::atomic_bool&                           stop_is_requested)
+    auto wait_for_input(Deltacast::Wrapper::BoardComponents::RxConnector& rx_connector,
+                        const std::atomic_bool&                           stop_is_requested) -> bool
     {
         while (!stop_is_requested && !rx_connector.signal_present())
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(wait_for_input_timeout_ms));
+        }
 
         return rx_connector.signal_present();
-    }
-
-    TechStream open_stream(Deltacast::Wrapper::Board& board, VHD_STREAMTYPE stream_type)
-    {
-        auto channel_type = stream_type_to_channel_type(board, stream_type);
-        switch (channel_type)
-        {
-        case VHD_CHNTYPE_HDSDI:
-        case VHD_CHNTYPE_3GSDI:
-        case VHD_CHNTYPE_12GSDI:
-            return std::move(board.sdi().open_stream(stream_type, VHD_SDI_STPROC_DISJOINED_VIDEO));
-        case VHD_CHNTYPE_HDMI_TMDS:
-        case VHD_CHNTYPE_HDMI_FRL3:
-        case VHD_CHNTYPE_HDMI_FRL4:
-        case VHD_CHNTYPE_HDMI_FRL5:
-        case VHD_CHNTYPE_HDMI_FRL6:
-        case VHD_CHNTYPE_DISPLAYPORT:
-            return std::move(board.dv().open_stream(stream_type, VHD_DV_STPROC_DISJOINED_VIDEO));
-        default:
-            throw Deltacast::VideoMonitor::SignalConfigurationException("Invalid stream type");
-        }
-    }
-
-    Deltacast::Wrapper::Stream& to_base_stream(TechStream& stream)
-    {
-        return std::visit(
-            overloaded{ [](Deltacast::Wrapper::SdiStream& sdi_stream) -> Deltacast::Wrapper::Stream&
-                        { return sdi_stream; },
-                        [](Deltacast::Wrapper::DvStream& dv_stream) -> Deltacast::Wrapper::Stream&
-                        { return dv_stream; } },
-            stream);
-    }
-
-    void configure_stream(TechStream& stream, const SignalInformation& signal_information)
-    {
-        std::visit(overloaded{ [&signal_information](Deltacast::Wrapper::SdiStream& sdi_stream)
-                               {
-                                   const Sdi::SignalInformation& sdi_signal_information =
-                                       std::get<Sdi::SignalInformation>(signal_information);
-                                   sdi_stream.set_video_standard(
-                                       sdi_signal_information.video_standard);
-                                   sdi_stream.set_interface(sdi_signal_information.video_interface);
-                               },
-                               [&signal_information](Deltacast::Wrapper::DvStream& dv_stream)
-                               {
-                                   const Dv::SignalInformation& dv_signal_information =
-                                       std::get<Dv::SignalInformation>(signal_information);
-                                   dv_stream.set_active_width(dv_signal_information.width);
-                                   dv_stream.set_active_height(dv_signal_information.height);
-                                   dv_signal_information.progressive ? dv_stream.set_progressive()
-                                                                     : dv_stream.set_interlaced();
-                                   dv_stream.set_frame_rate(dv_signal_information.framerate);
-                                   dv_stream.set_cable_color_space(
-                                       dv_signal_information.cable_color_space);
-                               } },
-                   stream);
-    }
-
-    std::string get_information_string(const SignalInformation& signal_information,
-                                       const std::string&       prefix /*= ""*/)
-    {
-        std::ostringstream oss;
-        std::visit(
-            overloaded{
-                [&prefix, &oss](const Sdi::SignalInformation& sdi_signal_info)
-                {
-                    oss << prefix << "Video standard: "
-                        << Deltacast::Wrapper::to_pretty_string(sdi_signal_info.video_standard)
-                        << "\n";
-                    oss << prefix << "Clock divisor: "
-                        << Deltacast::Wrapper::to_pretty_string(sdi_signal_info.clock_divisor)
-                        << "\n";
-                    oss << prefix << "Interface: "
-                        << Deltacast::Wrapper::to_pretty_string(sdi_signal_info.video_interface)
-                        << "\n";
-                },
-                [&prefix, &oss](const Dv::SignalInformation& dv_signal_info)
-                {
-                    oss << prefix << dv_signal_info.width << "x" << dv_signal_info.height
-                        << (dv_signal_info.progressive ? "p" : "i") << dv_signal_info.framerate
-                        << "\n";
-                    oss << prefix
-                        << Deltacast::Wrapper::to_pretty_string(dv_signal_info.cable_color_space)
-                        << "\n";
-                    oss << prefix
-                        << Deltacast::Wrapper::to_pretty_string(dv_signal_info.cable_sampling)
-                        << "\n";
-                } },
-            signal_information);
-        return oss.str();
-    }
-
-    SignalInformation detect_information(TechStream& stream)
-    {
-        return std::visit(
-            overloaded{ [](Deltacast::Wrapper::SdiStream& sdi_stream) -> SignalInformation
-                        {
-                            return Sdi::SignalInformation{ sdi_stream.video_standard(),
-                                                           sdi_stream.clock_divisor(),
-                                                           sdi_stream.interface() };
-                        },
-                        [](Deltacast::Wrapper::DvStream& dv_stream) -> SignalInformation
-                        {
-                            return Dv::SignalInformation{
-                                dv_stream.active_width(),      dv_stream.active_height(),
-                                !dv_stream.interlaced(),       dv_stream.frame_rate(),
-                                dv_stream.cable_color_space(), dv_stream.cable_sampling()
-                            };
-                        } },
-            stream);
-    }
-
-    Deltacast::Wrapper::Helper::VideoCharacteristics
-    get_video_characteristics(const SignalInformation& signal_information)
-    {
-        return std::visit(
-            overloaded{
-                [](const Sdi::SignalInformation& sdi_signal_info)
-                    -> Deltacast::Wrapper::Helper::VideoCharacteristics
-                {
-                    return Deltacast::Wrapper::Helper::Sdi::video_standard_to_characteristics(
-                        sdi_signal_info.video_standard);
-                },
-                [](const Dv::SignalInformation& dv_signal_info)
-                    -> Deltacast::Wrapper::Helper::VideoCharacteristics
-                {
-                    return { dv_signal_info.width, dv_signal_info.height,
-                             !dv_signal_info.progressive, dv_signal_info.framerate };
-                } },
-            signal_information);
     }
 }  // namespace Deltacast::VideoMonitor::Helper

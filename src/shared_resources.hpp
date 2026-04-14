@@ -15,7 +15,6 @@
 
 #pragma once
 
-#include <algorithm>
 #include <atomic>
 #include <exception>
 #include <mutex>
@@ -33,13 +32,13 @@ namespace Deltacast::VideoMonitor
 
         void reset();
 
-        void set_thread_exception(std::exception_ptr e)
+        void set_thread_exception(std::exception_ptr exc)
         {
             std::lock_guard<std::mutex> lock(thread_exception_mutex);
-            thread_exception = e;
+            thread_exception = exc;
         }
 
-        std::exception_ptr get_thread_exception() const
+        auto get_thread_exception() const -> std::exception_ptr
         {
             std::lock_guard<std::mutex> lock(thread_exception_mutex);
             return thread_exception;
