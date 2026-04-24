@@ -133,9 +133,7 @@ namespace Deltacast::VideoMonitor::Session
     {
         if (ip_address_struct.Version == VHD_SDP_IP_VERSION_4)
         {
-            const auto* bytes = reinterpret_cast<const uint8_t*>(&ip_address_struct.AddressV4);
-            return ipaddress::ip_address::from_bytes(bytes, sizeof(ip_address_struct.AddressV4),
-                                                     ipaddress::ip_version::V4);
+            return ipaddress::ipv4_address::from_uint(ip_address_struct.AddressV4);
         }
 
         if (ip_address_struct.Version == VHD_SDP_IP_VERSION_6)
@@ -166,8 +164,11 @@ namespace Deltacast::VideoMonitor::Session
                 ip_address.to_string()));
         }
 
+        port.multicast().set_version(VHD_IP_BRD_IGMP_VERSION_V3);
+
         if (ip_address.is_v4())
         {
+
             port.multicast().join(ip_address.to_uint32());
         }
         else if (ip_address.is_v6())
