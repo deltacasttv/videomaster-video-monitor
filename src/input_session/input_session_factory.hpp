@@ -16,6 +16,7 @@
 #pragma once
 
 #include "input_session_base.hpp"
+#include "ip_input_session.hpp"
 #include "shared_resources.hpp"
 
 #include <cstdint>
@@ -28,9 +29,12 @@ namespace Deltacast::VideoMonitor::Session
     class InputSessionFactory
     {
      public:
-        static auto create_input_session(uint32_t device_id, uint32_t stream_id,
-                                         std::optional<std::filesystem::path>      sdp_file_path,
-                                         Deltacast::VideoMonitor::SharedResources& shared_resources)
+        static auto
+        create_input_session(uint32_t device_id, uint32_t stream_id,
+                             std::optional<std::filesystem::path> sdp_file_path,
+                             std::optional<Deltacast::VideoMonitor::Session::IpNetworkConfiguration>
+                                                                       ip_network_configuration,
+                             Deltacast::VideoMonitor::SharedResources& shared_resources)
             -> std::unique_ptr<Deltacast::VideoMonitor::Session::InputSessionBase>;
     };
 }  // namespace Deltacast::VideoMonitor::Session

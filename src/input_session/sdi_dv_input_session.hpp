@@ -65,9 +65,7 @@ namespace Deltacast::VideoMonitor::Session
                     }));
         }
 
-        void start_stream() override { this->stream().start(); }
-
-        auto input_has_changed() -> bool override
+        auto video_input_has_changed() -> bool override
         {
             auto& board = this->board();
             this->ensure_stream_is_prepared();
@@ -79,7 +77,7 @@ namespace Deltacast::VideoMonitor::Session
                     "Failed to wait for input signal change");
             }
 
-            return has_input_changed();
+            return has_video_input_changed();
         }
 
         auto get_video_buffer() -> std::pair<UBYTE*, ULONG> override
@@ -109,6 +107,6 @@ namespace Deltacast::VideoMonitor::Session
         }
 
      private:
-        auto has_input_changed() -> bool override = 0;
+        auto has_video_input_changed() -> bool override = 0;
     };
 }  // namespace Deltacast::VideoMonitor::Session

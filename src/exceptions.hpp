@@ -51,29 +51,11 @@ namespace Deltacast::VideoMonitor
             }
         };
 
-        class SignalConfigurationException : public VideoMonitorException
-        {
-         public:
-            explicit SignalConfigurationException(const std::string& message)
-                : VideoMonitorException(fmt::format("Signal Configuration Error: {}", message))
-            {
-            }
-        };
-
         class RendererException : public VideoMonitorException
         {
          public:
             explicit RendererException(const std::string& message)
                 : VideoMonitorException(fmt::format("Renderer Error: {}", message))
-            {
-            }
-        };
-
-        class RendererInitializationException : public RendererException
-        {
-         public:
-            explicit RendererInitializationException(const std::string& message)
-                : RendererException(fmt::format("Initialization failed: {}", message))
             {
             }
         };
@@ -96,33 +78,21 @@ namespace Deltacast::VideoMonitor
             }
         };
 
-        class StreamNotPreparedException : public StreamException
+
+        class ConfigurationException : public VideoMonitorException
         {
          public:
-            explicit StreamNotPreparedException(uint32_t stream_id)
-                : StreamException(
-                      fmt::format("Stream must be prepared before configuring it (Stream ID: {})",
-                                  stream_id))
+            explicit ConfigurationException(const std::string& message)
+                : VideoMonitorException(fmt::format("Configuration Error: {}", message))
             {
             }
         };
 
-        class BoardNotOpenedException : public DeviceException
+        class NetworkException : public DeviceException
         {
          public:
-            explicit BoardNotOpenedException(uint32_t device_id)
-                : DeviceException(fmt::format(
-                      "Board must be opened before preparing the stream (Device ID: {})",
-                      device_id))
-            {
-            }
-        };
-
-        class UnsupportedChannelTypeException : public DeviceException
-        {
-         public:
-            explicit UnsupportedChannelTypeException(const std::string& channel_type)
-                : DeviceException(fmt::format("Unsupported channel type: {}", channel_type))
+            explicit NetworkException(const std::string& message)
+                : DeviceException(fmt::format("Network Error: {}", message))
             {
             }
         };

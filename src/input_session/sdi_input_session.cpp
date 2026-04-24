@@ -36,7 +36,7 @@ namespace Deltacast::VideoMonitor::Session
     {
     }
 
-    void SdiInputSession::prepare_stream()
+    void SdiInputSession::prepare_video_stream()
     {
         auto& board = this->board();
         this->disable_loopback();
@@ -57,7 +57,7 @@ namespace Deltacast::VideoMonitor::Session
         m_interface = m_stream->interface();
     }
 
-    void SdiInputSession::configure_stream()
+    void SdiInputSession::configure_video_stream()
     {
         auto& stream = this->stream();
 
@@ -68,7 +68,7 @@ namespace Deltacast::VideoMonitor::Session
         stream.set_interface(m_interface);
     }
 
-    auto SdiInputSession::has_input_changed() -> bool
+    auto SdiInputSession::has_video_input_changed() -> bool
     {
         auto& stream = this->stream();
         return (stream.video_standard() != m_video_standard ||

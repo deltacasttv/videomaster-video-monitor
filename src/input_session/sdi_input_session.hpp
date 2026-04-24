@@ -35,13 +35,13 @@ namespace Deltacast::VideoMonitor::Session
         explicit SdiInputSession(const SdiInputSessionConfiguration&       config,
                                  Deltacast::VideoMonitor::SharedResources& shared_resources);
         virtual ~SdiInputSession() = default;
-        void prepare_stream() override;
-        void configure_stream() override;
+        void prepare_video_stream() override;
+        void configure_video_stream() override;
         auto get_video_characteristics()
             -> Deltacast::Wrapper::Helper::VideoCharacteristics override;
 
      private:
-        auto has_input_changed() -> bool override;
+        auto has_video_input_changed() -> bool override;
 
         VHD_VIDEOSTANDARD m_video_standard{};
         VHD_CLOCKDIVISOR  m_clock_divisor{};

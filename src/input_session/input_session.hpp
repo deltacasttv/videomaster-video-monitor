@@ -44,7 +44,9 @@ namespace Deltacast::VideoMonitor::Session
         }
         virtual ~InputSession() = default;
 
-        auto get_slots_statistics() -> std::pair<ULONG, ULONG> override
+        void start_video_stream() override { this->stream().start(); }
+
+        auto get_video_slots_statistics() -> std::pair<ULONG, ULONG> override
         {
             auto& stream = this->stream();
             return { stream.buffer_queue().slots_count(), stream.buffer_queue().slots_dropped() };
@@ -69,7 +71,9 @@ namespace Deltacast::VideoMonitor::Session
         {
             if (!m_stream)
             {
-                throw Deltacast::VideoMonitor::Exceptions::StreamNotPreparedException(stream_id());
+                throw Deltacast::VideoMonitor::Exceptions::StreamException(
+                    fmt::format("Stream must be prepared before configuring it (Stream ID: {})",
+                                stream_id()));
             }
         }
     };

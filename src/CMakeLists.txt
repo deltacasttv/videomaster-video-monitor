@@ -19,6 +19,7 @@ set(${PROJECT_NAME}_SOURCES
     ${CMAKE_SOURCE_DIR}/src/video_monitor.cpp
     ${CMAKE_SOURCE_DIR}/src/input_session/sdi_input_session.cpp
     ${CMAKE_SOURCE_DIR}/src/input_session/dv_input_session.cpp
+    ${CMAKE_SOURCE_DIR}/src/input_session/ip_input_session.cpp
     ${CMAKE_SOURCE_DIR}/src/input_session/input_session_factory.cpp
 )
 
@@ -34,7 +35,8 @@ find_package(CLI11 REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(fmt REQUIRED)
 find_package(video-viewer REQUIRED)
+find_package(ipaddress REQUIRED)
 find_package(VideoMasterHD 6.30 REQUIRED)
 FetchContent_MakeAvailable(VideoMasterCppApi)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE VideoMasterCppApi video-viewer CLI11::CLI11 spdlog::spdlog fmt::fmt video-viewer::video-viewer)
+target_link_libraries(${PROJECT_NAME} PRIVATE VideoMasterCppApi video-viewer CLI11::CLI11 spdlog::spdlog fmt::fmt video-viewer::video-viewer ipaddress::ipaddress)

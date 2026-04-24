@@ -65,7 +65,7 @@ namespace Deltacast::VideoMonitor::Renderer
             if (!m_monitor.init(m_window_width, m_window_height, m_window_title.c_str(),
                                 image_width, image_height, input_format))
             {
-                throw Deltacast::VideoMonitor::Exceptions::RendererInitializationException(
+                throw Deltacast::VideoMonitor::Exceptions::RendererException(
                     "VideoViewer initialization failed");
             }
 

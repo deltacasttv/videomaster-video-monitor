@@ -22,8 +22,10 @@
 #include <VideoMasterCppApi/helper/video.hpp>
 #include <VideoMasterHD_Core.h>
 #include <cstdint>
+#include <fmt/format.h>
 #include <memory>
 #include <utility>
+
 
 namespace Deltacast::VideoMonitor::Session
 {
@@ -45,14 +47,14 @@ namespace Deltacast::VideoMonitor::Session
         }
         virtual ~InputSessionBase() = default;
         virtual void open_board() = 0;
-        virtual void prepare_stream() = 0;
-        virtual void configure_stream() = 0;
-        virtual void start_stream() = 0;
-        virtual auto input_has_changed() -> bool = 0;
+        virtual void prepare_video_stream() = 0;
+        virtual void configure_video_stream() = 0;
+        virtual void start_video_stream() = 0;
+        virtual auto video_input_has_changed() -> bool = 0;
         virtual auto get_video_buffer() -> std::pair<UBYTE*, ULONG> = 0;
         virtual auto get_video_characteristics()
             -> Deltacast::Wrapper::Helper::VideoCharacteristics = 0;
-        virtual auto get_slots_statistics() -> std::pair<ULONG, ULONG> = 0;
+        virtual auto get_video_slots_statistics() -> std::pair<ULONG, ULONG> = 0;
 
      protected:
         std::unique_ptr<Deltacast::Wrapper::Board> m_board;
@@ -76,12 +78,14 @@ namespace Deltacast::VideoMonitor::Session
         {
             if (!m_board)
             {
-                throw Deltacast::VideoMonitor::Exceptions::BoardNotOpenedException(m_device_id);
+                throw Deltacast::VideoMonitor::Exceptions::DeviceException(
+                    fmt::format("Board must be opened before preparing the stream (Device ID: {})",
+                                m_device_id));
             }
         }
 
      private:
-        virtual auto has_input_changed() -> bool = 0;
+        virtual auto has_video_input_changed() -> bool = 0;
 
         uint32_t m_device_id;
         uint32_t m_stream_id;

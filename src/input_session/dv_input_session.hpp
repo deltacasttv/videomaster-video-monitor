@@ -35,13 +35,13 @@ namespace Deltacast::VideoMonitor::Session
         explicit DvInputSession(const DvInputSessionConfiguration&        config,
                                 Deltacast::VideoMonitor::SharedResources& shared_resources);
         virtual ~DvInputSession() = default;
-        void prepare_stream() override;
-        void configure_stream() override;
+        void prepare_video_stream() override;
+        void configure_video_stream() override;
         auto get_video_characteristics()
             -> Deltacast::Wrapper::Helper::VideoCharacteristics override;
 
      private:
-        auto            has_input_changed() -> bool override;
+        auto            has_video_input_changed() -> bool override;
         unsigned int    m_active_width{};
         unsigned int    m_active_height{};
         bool            m_interlaced{};

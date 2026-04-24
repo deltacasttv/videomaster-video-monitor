@@ -36,7 +36,7 @@ namespace Deltacast::VideoMonitor::Session
     {
     }
 
-    void DvInputSession::prepare_stream()
+    void DvInputSession::prepare_video_stream()
     {
         auto& board = this->board();
         disable_loopback();
@@ -63,7 +63,7 @@ namespace Deltacast::VideoMonitor::Session
                                      static_cast<BOOL32>(m_interlaced), m_framerate };
     }
 
-    void DvInputSession::configure_stream()
+    void DvInputSession::configure_video_stream()
     {
         ensure_stream_is_prepared();
 
@@ -79,7 +79,7 @@ namespace Deltacast::VideoMonitor::Session
         stream.set_cable_sampling(m_cable_sampling);
     }
 
-    auto DvInputSession::has_input_changed() -> bool
+    auto DvInputSession::has_video_input_changed() -> bool
     {
         auto& stream = this->stream();
         return (stream.active_width() != m_active_width ||

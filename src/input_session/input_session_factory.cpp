@@ -17,6 +17,7 @@
 #include "dv_input_session.hpp"
 #include "exceptions.hpp"
 #include "input_session_base.hpp"
+#include "ip_input_session.hpp"
 #include "sdi_input_session.hpp"
 #include "shared_resources.hpp"
 
@@ -25,6 +26,7 @@
 #include <VideoMasterHD_Core.h>
 #include <cstdint>
 #include <filesystem>
+#include <fmt/format.h>
 #include <memory>
 #include <optional>
 
@@ -32,11 +34,23 @@ namespace Deltacast::VideoMonitor::Session
 {
     auto InputSessionFactory::create_input_session(
         uint32_t device_id, uint32_t stream_id, std::optional<std::filesystem::path> sdp_file_path,
+        std::optional<Deltacast::VideoMonitor::Session::IpNetworkConfiguration>
+                                                  ip_network_configuration,
         Deltacast::VideoMonitor::SharedResources& shared_resources)
         -> std::unique_ptr<InputSessionBase>
     {
         auto board = Deltacast::Wrapper::Board::open(device_id);
         auto channel_type = board.rx(stream_id).type();
+
+        if (ip_network_configuration.has_value() && channel_type != VHD_CHNTYPE_IP_2110)
+        {
+            throw Exceptions::ConfigurationException(
+                fmt::format("IP network configuration options (--ip-dhcp, --ip-address, "
+                            "--ip-subnet, --ip-gateway) are only valid for IP 2110 channels, "
+                            "but detected channel type: {}",
+                            Deltacast::Wrapper::to_pretty_string(channel_type)));
+        }
+
         switch (channel_type)
         {
         case VHD_CHNTYPE_HDSDI:
@@ -57,13 +71,22 @@ namespace Deltacast::VideoMonitor::Session
         case VHD_CHNTYPE_IP_2110:
             if (!sdp_file_path.has_value())
             {
-                throw Exceptions::VideoMonitorException(
+                throw Exceptions::ConfigurationException(
                     "SDP file path must be provided for IP input sessions");
             }
-            return nullptr;  // TODO: Implement IP input session
+            if (!ip_network_configuration.has_value())
+            {
+                throw Exceptions::ConfigurationException(
+                    "IP network configuration must be provided for IP input sessions");
+            }
+            return std::make_unique<IpInputSession>(
+                IpInputSessionConfig{ device_id, stream_id, sdp_file_path.value(),
+                                      ip_network_configuration.value() },
+                shared_resources);
         default:
-            throw Exceptions::UnsupportedChannelTypeException(
-                Deltacast::Wrapper::to_pretty_string(channel_type));
+            throw Exceptions::ConfigurationException(
+                fmt::format("Unsupported channel type: {}",
+                            Deltacast::Wrapper::to_pretty_string(channel_type)));
         }
     }
 }  // namespace Deltacast::VideoMonitor::Session
