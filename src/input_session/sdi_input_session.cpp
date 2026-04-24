@@ -64,7 +64,6 @@ namespace Deltacast::VideoMonitor::Session
         stream.buffer_queue().set_depth(buffer_queue_size);
         stream.set_buffer_packing(VHD_BUFPACK_VIDEO_YUV422_8);
         stream.set_video_standard(m_video_standard);
-        stream.set_clock_divisor(m_clock_divisor);
         stream.set_interface(m_interface);
     }
 
