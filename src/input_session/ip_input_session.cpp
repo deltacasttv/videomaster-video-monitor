@@ -275,6 +275,12 @@ namespace Deltacast::VideoMonitor::Session
                 {
                     join_multicast_group(media_description.DestinationIP, sps_port_index);
                 }
+                else if (mid == "secondary" && !m_network_configuration.has_sps)
+                {
+                    spdlog::warn("SDP contains a secondary media description but SPS is not "
+                                 "enabled in network "
+                                 "configuration. Ignoring secondary media.");
+                }
                 else
                 {
                     join_multicast_group(media_description.DestinationIP, main_port_index);
@@ -317,6 +323,11 @@ namespace Deltacast::VideoMonitor::Session
 
             if (!static_cast<bool>(media_description.SourceFilter.UseSourceFilter))
             {
+                spdlog::trace(
+                    "Configuring multicast filtering for destination {} with no source filtering",
+                    ipaddress::ipv4_address::from_uint(
+                        media_description.SourceFilter.DestinationIP.AddressV4)
+                        .to_string());
                 return;
             }
 
@@ -325,6 +336,16 @@ namespace Deltacast::VideoMonitor::Session
                 throw Exceptions::ConfigurationException(
                     "Source filtering is only supported for IPv4 addresses");
             }
+
+            spdlog::trace(
+                "Configuring multicast filtering for destination {}: filter mode {}, source "
+                "IPs {}",
+                ipaddress::ipv4_address::from_uint(
+                    media_description.SourceFilter.DestinationIP.AddressV4)
+                    .to_string(),
+                media_description.SourceFilter.FilterMode == VHD_SDP_FILTER_MODE_INCL ? "INCLUDE"
+                                                                                      : "EXCLUDE",
+                std::string(media_description.SourceFilter.SourceIPList));
 
             port.multicast().set_source_mode(media_description.SourceFilter.DestinationIP.AddressV4,
                                              media_description.SourceFilter.FilterMode ==
@@ -352,12 +373,19 @@ namespace Deltacast::VideoMonitor::Session
             {
                 configure_multicast_filtering(stream, port, media_description);
             }
-            else
+            else if (ip_address.is_multicast())
             {
                 throw Exceptions::ConfigurationException(
-                    fmt::format("IP address {} in SDP is not multicast but only multicast is "
-                                "supported for IP input",
+                    fmt::format("IP address {} in SDP is multicast but port does not support "
+                                "multicast reception",
                                 ip_address.to_string()));
+            }
+            else
+            {
+                // TODO : For unicast reception, we should ideally configure source IP from SDP
+                // session origin. Awaiting SDP API fix
+                stream.set_source_ip_address(
+                    ipaddress::ipv4_address::parse("172.16.20.142").to_uint());
             }
 
             stream.set_destination_port(media_description.UdpPort);
@@ -374,7 +402,7 @@ namespace Deltacast::VideoMonitor::Session
             const auto mid = std::string(media_description.MID);
             const auto ip_address = parse_sdp_ip_address(media_description.DestinationIP);
 
-            if (mid == "secondary")
+            if (mid == "secondary" && m_network_configuration.has_sps)
             {
                 spdlog::info(
                     "Configuring secondary ST2110 media: destination {}, UDP {}, payload {}",
@@ -382,6 +410,12 @@ namespace Deltacast::VideoMonitor::Session
                     media_description.PayloadType);
                 configure_destination(m_stream->sps_stream(), board.ip().port(sps_port_index),
                                       media_description, ip_address);
+            }
+            else if (mid == "secondary" && !m_network_configuration.has_sps)
+            {
+                spdlog::warn(
+                    "SDP contains a secondary media description but SPS is not enabled in network "
+                    "configuration. Ignoring secondary media.");
             }
             else
             {
