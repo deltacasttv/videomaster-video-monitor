@@ -20,15 +20,22 @@ VideoViewer requires some dependencies to be installed on the system:
 
 We recommend using Conan 2.x to retrieve those dependencies:
 
-    conan install . -b missing -pr YOUR_CONAN_PROFILE
+    conan install . -b missing
 
-As some dependencies are also retrieved through submodules, you will need to initialize them:
+## Dependency compatibility
 
-    git submodule update --init --recursive
+The table below summarizes the expected compatibility between `video-viewer` and the VideoMaster SDK.
+
+| `video-viewer` version | Supported VideoMaster SDK versions |
+| --- | --- |
+| `>=2.0.0, <3.0.0` | `>=6.30` and `<6.IMQ` |
+| `3.0.0` (planned) | `>=6.IMQ` |
+
+`IMQ` is a placeholder and must be replaced with the actual VideoMaster SDK version once finalized.
 
 ## VideoMaster SDK
 
-The VideoMaster SDK (version >= 6.30) is required to build the application.
+The VideoMaster SDK is required to build the application.
 
 After installing the SDK according to the official documentation, the libs and headers should be found without further step needed through the `find_package` command.
 
@@ -36,8 +43,8 @@ After installing the SDK according to the official documentation, the libs and h
 
 If you used Conan to retrieve your dependencies, you can use the following commands to build the project:
 
-    cmake --preset YOUR_CMAKE_PRESET
-    cmake --build build
+    cmake --preset conan-release
+    cmake --build --preset conan-release
 
 # How to use
 

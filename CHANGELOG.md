@@ -3,6 +3,7 @@
 ## Added
 
 - Support for DELTA-hmi-e 40 [PR #9]
+- Support for IP boards [PR #12]
 
 # 2.0.0
 

@@ -39,4 +39,4 @@ find_package(ipaddress REQUIRED)
 find_package(VideoMasterHD 6.30 REQUIRED)
 FetchContent_MakeAvailable(VideoMasterCppApi)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE VideoMasterCppApi video-viewer CLI11::CLI11 spdlog::spdlog fmt::fmt video-viewer::video-viewer ipaddress::ipaddress)
+target_link_libraries(${PROJECT_NAME} PRIVATE VideoMasterCppApi CLI11::CLI11 spdlog::spdlog fmt::fmt video-viewer::video-viewer ipaddress::ipaddress)
