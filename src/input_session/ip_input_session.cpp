@@ -339,17 +339,40 @@ namespace Deltacast::VideoMonitor::Session
         m_stream = std::make_unique<Deltacast::Wrapper::Ip2110Stream>(
             board.ip().ip2110().open_essence_stream(VHD_ET_ST2110_20, VHD_RX_CHANNEL, stream_id));
 
-        const auto set_destination_address =
-            [](auto& stream, const ipaddress::ip_address& ip_address)
+        const auto set_stream_address = [](auto& stream, const ipaddress::ip_address& ip_address,
+                                           auto&& set_v4, auto&& set_v6, const char* address_kind)
         {
             if (ip_address.is_v4())
             {
-                stream.set_destination_ip_address(ip_address.to_uint32());
+                set_v4(stream, ip_address.to_uint32());
+                spdlog::trace("Configuring {} IP address {} for IPv4 stream", address_kind,
+                              ip_address.to_string());
             }
             else if (ip_address.is_v6())
             {
-                stream.set_destination_ipv6_address(to_ipv6_bytes(ip_address));
+                set_v6(stream, to_ipv6_bytes(ip_address));
+                spdlog::trace("Configuring {} IP address {} for IPv6 stream", address_kind,
+                              ip_address.to_string());
             }
+        };
+
+        const auto set_destination_address =
+            [&](auto& stream, const ipaddress::ip_address& ip_address)
+        {
+            set_stream_address(
+                stream, ip_address, [](auto& current_stream, auto address_v4)
+                { current_stream.set_destination_ip_address(address_v4); },
+                [](auto& current_stream, const auto& address_v6)
+                { current_stream.set_destination_ipv6_address(address_v6); }, "destination");
+        };
+
+        const auto set_source_address = [&](auto& stream, const ipaddress::ip_address& ip_address)
+        {
+            set_stream_address(
+                stream, ip_address, [](auto& current_stream, auto address_v4)
+                { current_stream.set_source_ip_address(address_v4); },
+                [](auto& current_stream, const auto& address_v6)
+                { current_stream.set_source_ipv6_address(address_v6); }, "source");
         };
 
         const auto configure_multicast_filtering =
@@ -417,6 +440,9 @@ namespace Deltacast::VideoMonitor::Session
                                                const auto& ip_address)
         {
             set_destination_address(stream, ip_address);
+            spdlog::trace(
+                "Configured destination IP address for stream: {}",
+                ipaddress::ip_address::from_uint(stream.destination_ip_address()).to_string());
 
             if (ip_address.is_multicast() && port.has_multicast())
             {
@@ -431,21 +457,16 @@ namespace Deltacast::VideoMonitor::Session
             }
             else
             {
+                spdlog::trace("Configuring unicast source IP address for destination {}",
+                              ip_address.to_string());
                 auto source_ip_address = parse_sdp_ip_address(session.SourceIP);
-                if (source_ip_address.is_v4() && ip_address.is_v4())
-                {
-                    stream.set_source_ip_address(source_ip_address.to_uint32());
-                }
-                else if (source_ip_address.is_v6() && ip_address.is_v6())
-                {
-                    stream.set_source_ipv6_address(to_ipv6_bytes(source_ip_address));
-                }
-                else
-                {
-                    throw Exceptions::ConfigurationException(
-                        fmt::format("Source IP address version does not match destination IP "
-                                    "address version in SDP"));
-                }
+                spdlog::trace("Parsed source IP address {} from SDP session",
+                              source_ip_address.to_string());
+                set_source_address(stream, source_ip_address);
+                spdlog::trace(
+                    "Configured unicast source IP address for destination {}: {}",
+                    ip_address.to_string(),
+                    ipaddress::ip_address::from_uint(stream.source_ip_address()).to_string());
             }
 
             stream.set_destination_port(media_description.UdpPort);
