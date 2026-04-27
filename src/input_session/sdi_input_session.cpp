@@ -39,13 +39,16 @@ namespace Deltacast::VideoMonitor::Session
     void SdiInputSession::prepare_video_stream()
     {
         auto& board = this->board();
+        spdlog::trace("Preparing SDI stream on RX{}", this->stream_id());
         this->disable_loopback();
 
         m_stream = std::make_unique<Deltacast::Wrapper::SdiStream>(board.sdi().open_stream(
             Deltacast::VideoMonitor::Helper::rx_index_to_streamtype(this->stream_id()),
             VHD_SDI_STPROC_DISJOINED_VIDEO));
 
-        spdlog::info("Waiting for signal...");
+        spdlog::debug("Opened SDI stream on RX{}", this->stream_id());
+
+        spdlog::trace("Waiting for signal...");
         if (!Deltacast::VideoMonitor::Helper::wait_for_input(
                 board.rx(this->stream_id()), this->shared_resources().stop_is_requested))
         {
@@ -55,6 +58,10 @@ namespace Deltacast::VideoMonitor::Session
         m_video_standard = m_stream->video_standard();
         m_clock_divisor = m_stream->clock_divisor();
         m_interface = m_stream->interface();
+
+        spdlog::info("Detected SDI signal on RX{}: standard={}, clock_divisor={}, interface={}",
+                     this->stream_id(), static_cast<int>(m_video_standard),
+                     static_cast<int>(m_clock_divisor), static_cast<int>(m_interface));
     }
 
     void SdiInputSession::configure_video_stream()
@@ -65,13 +72,30 @@ namespace Deltacast::VideoMonitor::Session
         stream.set_buffer_packing(VHD_BUFPACK_VIDEO_YUV422_8);
         stream.set_video_standard(m_video_standard);
         stream.set_interface(m_interface);
+
+        spdlog::debug("Configured SDI stream on RX{} with queue depth {}", this->stream_id(),
+                      buffer_queue_size);
     }
 
     auto SdiInputSession::has_video_input_changed() -> bool
     {
-        auto& stream = this->stream();
-        return (stream.video_standard() != m_video_standard ||
-                stream.clock_divisor() != m_clock_divisor || stream.interface() != m_interface);
+        auto&      stream = this->stream();
+        const auto video_standard_changed = stream.video_standard() != m_video_standard;
+        const auto clock_divisor_changed = stream.clock_divisor() != m_clock_divisor;
+        const auto interface_changed = stream.interface() != m_interface;
+
+        if (video_standard_changed || clock_divisor_changed || interface_changed)
+        {
+            spdlog::debug("SDI signal change details on RX{}: standard {}->{}, clock_divisor "
+                          "{}->{}, interface {}->{}",
+                          this->stream_id(), static_cast<int>(m_video_standard),
+                          static_cast<int>(stream.video_standard()),
+                          static_cast<int>(m_clock_divisor),
+                          static_cast<int>(stream.clock_divisor()), static_cast<int>(m_interface),
+                          static_cast<int>(stream.interface()));
+        }
+
+        return video_standard_changed || clock_divisor_changed || interface_changed;
     }
 
     auto SdiInputSession::get_video_characteristics()

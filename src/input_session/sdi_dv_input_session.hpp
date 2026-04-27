@@ -23,6 +23,7 @@
 #include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterHD_Core.h>
 #include <memory>
+#include <spdlog/spdlog.h>
 #include <utility>
 
 namespace Deltacast::VideoMonitor::Session
@@ -45,6 +46,7 @@ namespace Deltacast::VideoMonitor::Session
 
         void open_board() override
         {
+            spdlog::trace("Opening board {} for RX{}", this->device_id(), this->stream_id());
             this->m_board = std::make_unique<Deltacast::Wrapper::Board>(
                 Deltacast::Wrapper::Board::open(
                     this->device_id(),
@@ -52,17 +54,25 @@ namespace Deltacast::VideoMonitor::Session
                     {
                         if (board.has_firmware_loopback(this->stream_id()))
                         {
+                            spdlog::trace("Enabling firmware loopback on RX{} for cleanup path",
+                                          this->stream_id());
                             board.firmware_loopback(this->stream_id()).enable();
                         }
                         else if (board.has_active_loopback(this->stream_id()))
                         {
+                            spdlog::trace("Enabling active loopback on RX{} for cleanup path",
+                                          this->stream_id());
                             board.active_loopback(this->stream_id()).enable();
                         }
                         else if (board.has_passive_loopback(this->stream_id()))
                         {
+                            spdlog::trace("Enabling passive loopback on RX{} for cleanup path",
+                                          this->stream_id());
                             board.passive_loopback(this->stream_id()).enable();
                         }
                     }));
+
+            spdlog::trace("Board {} opened for RX{}", this->device_id(), this->stream_id());
         }
 
         auto video_input_has_changed() -> bool override
@@ -77,7 +87,13 @@ namespace Deltacast::VideoMonitor::Session
                     "Failed to wait for input signal change");
             }
 
-            return has_video_input_changed();
+            const auto input_has_changed = has_video_input_changed();
+            if (input_has_changed)
+            {
+                spdlog::warn("Video input characteristics changed on RX{}", this->stream_id());
+            }
+
+            return input_has_changed;
         }
 
         auto get_video_buffer() -> std::pair<UBYTE*, ULONG> override
@@ -94,15 +110,22 @@ namespace Deltacast::VideoMonitor::Session
 
             if (board.has_firmware_loopback(this->stream_id()))
             {
+                spdlog::trace("Disabling firmware loopback on RX{}", this->stream_id());
                 board.firmware_loopback(this->stream_id()).disable();
             }
             else if (board.has_active_loopback(this->stream_id()))
             {
+                spdlog::trace("Disabling active loopback on RX{}", this->stream_id());
                 board.active_loopback(this->stream_id()).disable();
             }
             else if (board.has_passive_loopback(this->stream_id()))
             {
+                spdlog::trace("Disabling passive loopback on RX{}", this->stream_id());
                 board.passive_loopback(this->stream_id()).disable();
+            }
+            else
+            {
+                spdlog::trace("No loopback to disable on RX{}", this->stream_id());
             }
         }
 

@@ -26,6 +26,7 @@
 #include <VideoMasterCppApi/slot/ip/st2110_slot.hpp>
 #include <VideoMasterCppApi/stream/ip/st2110_stream.hpp>
 #include <VideoMasterCppApi/stream/ip/video.hpp>
+#include <VideoMasterCppApi/to_string.hpp>
 #include <VideoMasterHD_Core.h>
 #include <VideoMasterHD_Ip_Board.h>
 #include <VideoMasterHD_Ip_ST2110_Board.h>
@@ -43,6 +44,7 @@
 #include <ipaddress/ipv4-address.hpp>
 #include <iterator>
 #include <memory>
+#include <spdlog/spdlog.h>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -58,20 +60,37 @@ namespace Deltacast::VideoMonitor::Session
         constexpr uint32_t main_port_index = 0;
         constexpr uint32_t sps_port_index = 1;
         constexpr uint32_t ipv6_byte_count = 16;
+
+        auto network_mode_to_string(IpNetworkMode mode) -> const char*
+        {
+            return mode == IpNetworkMode::Dhcp ? "DHCP" : "static";
+        }
+
         auto wait_for_dhcp_ip(Deltacast::Wrapper::BoardComponents::IpComponents::Port& port) -> void
         {
             const auto deadline = std::chrono::steady_clock::now() +
                                   std::chrono::seconds(dhcp_timeout_seconds);
+            spdlog::trace("Waiting for DHCP lease assignment...");
             while (!static_cast<bool>(port.dhcp().status().IPValid))
             {
                 if (std::chrono::steady_clock::now() >= deadline)
                 {
+                    spdlog::warn("DHCP lease assignment timed out after {} seconds",
+                                 dhcp_timeout_seconds);
                     throw Exceptions::NetworkException(
                         "Timed out waiting for DHCP to assign an IP address");
                 }
 
                 std::this_thread::sleep_for(std::chrono::milliseconds(dhcp_poll_interval_ms));
             }
+
+            spdlog::info("DHCP lease acquired");
+            spdlog::debug("DHCP assigned IP address: {}",
+                          ipaddress::ipv4_address::from_uint(port.ip_address()).to_string());
+            spdlog::debug("DHCP assigned subnet mask: {}",
+                          ipaddress::ipv4_address::from_uint(port.subnet_mask()).to_string());
+            spdlog::debug("DHCP assigned gateway: {}",
+                          ipaddress::ipv4_address::from_uint(port.gateway()).to_string());
         };
 
         auto configure_ip_port(Deltacast::Wrapper::Board& board, uint32_t port_index,
@@ -81,16 +100,20 @@ namespace Deltacast::VideoMonitor::Session
                                const char*                    unsupported_dhcp_message) -> void
         {
             auto& port = board.ip().port(port_index);
+            spdlog::trace("Configuring IP port {} in {} mode", port_index,
+                          network_mode_to_string(mode));
 
             if (mode == IpNetworkMode::Dhcp)
             {
                 if (!port.has_dhcp())
                 {
+                    spdlog::warn("DHCP requested on IP port {} but not supported", port_index);
                     throw Exceptions::NetworkException(unsupported_dhcp_message);
                 }
 
                 port.dhcp().enable();
                 wait_for_dhcp_ip(port);
+                spdlog::trace("IP port {} DHCP configuration applied", port_index);
                 return;
             }
 
@@ -102,6 +125,15 @@ namespace Deltacast::VideoMonitor::Session
             port.set_ip_address(ip_address_v4.to_uint());
             port.set_subnet_mask(subnet_mask_v4.to_uint());
             port.set_gateway(gateway_v4.to_uint());
+            spdlog::trace("IP port {} configured with IP address {}, subnet mask {}, gateway {}",
+                          port_index,
+                          ipaddress::ipv4_address::from_uint(port.ip_address()).to_string(),
+                          ipaddress::ipv4_address::from_uint(port.subnet_mask()).to_string(),
+                          ipaddress::ipv4_address::from_uint(port.gateway()).to_string());
+
+            spdlog::debug("Configured IP port {} with address {}, subnet {}, gateway {}",
+                          port_index, ip_address_v4.to_string(), subnet_mask_v4.to_string(),
+                          gateway_v4.to_string());
         };
 
     }  // namespace
@@ -111,6 +143,8 @@ namespace Deltacast::VideoMonitor::Session
         : InputSession<Deltacast::Wrapper::Ip2110Stream>(config, shared_resources),
           m_network_configuration(config.network_configuration)
     {
+        spdlog::trace("Loading SDP file '{}' for IP RX{}", config.sdp_file_path.string(),
+                      config.stream_id);
         std::string sdp_content;
         {
             std::ifstream sdp_file(config.sdp_file_path);
@@ -126,6 +160,7 @@ namespace Deltacast::VideoMonitor::Session
         auto [session, media] = Deltacast::Wrapper::Helper::Ip::read_sdp(sdp_content);
         this->session = session;
         this->media = media;
+        spdlog::debug("Parsed SDP session with {} media description(s)", this->media.size());
     }
 
     auto IpInputSession::parse_sdp_ip_address(const VHD_SDP_IP_ADDRESS& ip_address_struct)
@@ -154,6 +189,8 @@ namespace Deltacast::VideoMonitor::Session
 
         if (!ip_address.is_multicast())
         {
+            spdlog::trace("Skipping multicast join for unicast destination {} on port {}",
+                          ip_address.to_string(), port_index);
             return;
         }
 
@@ -181,10 +218,12 @@ namespace Deltacast::VideoMonitor::Session
         }
 
         m_multicast_groups.emplace_back(port_index, ip_address);
+        spdlog::trace("Joined multicast group {} on port {}", ip_address.to_string(), port_index);
     }
 
     void IpInputSession::open_board()
     {
+        spdlog::trace("Opening IP board {} for RX{}", this->device_id(), this->stream_id());
         m_multicast_groups.clear();
 
         this->m_board = std::make_unique<Deltacast::Wrapper::Board>(Deltacast::Wrapper::Board::open(
@@ -209,6 +248,7 @@ namespace Deltacast::VideoMonitor::Session
                 }
             }));
 
+        spdlog::debug("Configuring Main port {}", main_port_index);
         configure_ip_port(this->board(), main_port_index, m_network_configuration.mode,
                           m_network_configuration.ip_address_v4,
                           m_network_configuration.subnet_mask_v4,
@@ -217,6 +257,7 @@ namespace Deltacast::VideoMonitor::Session
 
         if (m_network_configuration.has_sps)
         {
+            spdlog::debug("Configuring SPS port {}", sps_port_index);
             configure_ip_port(
                 this->board(), sps_port_index, m_network_configuration.sps_mode,
                 m_network_configuration.sps_ip_address_v4,
@@ -229,6 +270,7 @@ namespace Deltacast::VideoMonitor::Session
             if (media_description.MediaType == VHD_SDP_MEDIA_TYPE_ST2110_20)
             {
                 auto mid = std::string(media_description.MID);
+                spdlog::trace("Preparing multicast subscription for SDP media '{}'", mid);
                 if (mid == "secondary" && m_network_configuration.has_sps)
                 {
                     join_multicast_group(media_description.DestinationIP, sps_port_index);
@@ -245,6 +287,8 @@ namespace Deltacast::VideoMonitor::Session
     {
         auto& board = this->board();
         auto  stream_id = this->stream_id();
+
+        spdlog::trace("Opening ST2110-20 essence stream for RX{}", stream_id);
 
         m_stream = std::make_unique<Deltacast::Wrapper::Ip2110Stream>(
             board.ip().ip2110().open_essence_stream(VHD_ET_ST2110_20, VHD_RX_CHANNEL, stream_id));
@@ -332,11 +376,19 @@ namespace Deltacast::VideoMonitor::Session
 
             if (mid == "secondary")
             {
+                spdlog::info(
+                    "Configuring secondary ST2110 media: destination {}, UDP {}, payload {}",
+                    ip_address.to_string(), media_description.UdpPort,
+                    media_description.PayloadType);
                 configure_destination(m_stream->sps_stream(), board.ip().port(sps_port_index),
                                       media_description, ip_address);
             }
             else
             {
+                spdlog::info(
+                    "Configuring main ST2110 media '{}' : destination {}, UDP {}, payload {}", mid,
+                    ip_address.to_string(), media_description.UdpPort,
+                    media_description.PayloadType);
                 configure_destination(m_stream->main_stream(), board.ip().port(main_port_index),
                                       media_description, ip_address);
             }
@@ -348,6 +400,12 @@ namespace Deltacast::VideoMonitor::Session
             m_video_characteristics =
                 Deltacast::Wrapper::Helper::Ip::video_standard_to_characteristics(
                     media_description.ST2110_20.VideoStandard);
+
+            spdlog::info("Detected ST2110 video standard {} ({}x{}, interlaced={})",
+                         Deltacast::Wrapper::to_pretty_string(
+                             media_description.ST2110_20.VideoStandard),
+                         m_video_characteristics.width, m_video_characteristics.height,
+                         static_cast<bool>(m_video_characteristics.interlaced));
         }
     }
 
@@ -357,6 +415,8 @@ namespace Deltacast::VideoMonitor::Session
 
         stream.buffer_queue().set_depth(buffer_queue_size);
         stream.set_buffer_packing(VHD_BUFPACK_VIDEO_YUV422_8);
+        spdlog::trace("Configured ST2110 buffer queue depth={} packing=YUV422_8",
+                      buffer_queue_size);
     }
 
     auto IpInputSession::has_video_input_changed() -> bool

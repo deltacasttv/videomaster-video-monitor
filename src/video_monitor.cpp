@@ -173,9 +173,9 @@ namespace Deltacast::VideoMonitor
 
         init_log();
 
-        spdlog::trace("VideoMaster video-monitor ({})", VERSTRING);
+        spdlog::info("VideoMaster video-monitor ({})", VERSTRING);
 
-        spdlog::debug("VideoMaster API version: {}", Deltacast::Wrapper::api_version());
+        spdlog::trace("VideoMaster API version: {}", Deltacast::Wrapper::api_version());
         spdlog::trace("Discovered {} devices", Deltacast::Wrapper::Board::count());
 
         if (!check_device_id())
@@ -190,19 +190,27 @@ namespace Deltacast::VideoMonitor
                                            m_ip_sps_gateway),
             m_shared_resources);
 
+        spdlog::trace("Starting monitor loop on device {} input {}", m_device_id, m_stream_id);
+
         spdlog::debug("Opening device {}", m_device_id);
         session->open_board();
         spdlog::trace("Opened device {}", m_device_id);
 
         while (!m_shared_resources.stop_is_requested)
         {
+            spdlog::trace("Preparing capture cycle for RX{}", m_stream_id);
             m_shared_resources.reset();
 
             spdlog::debug("Opening RX{} stream...", m_stream_id);
             session->prepare_video_stream();
             session->configure_video_stream();
+            spdlog::trace("RX{} stream opened and configured", m_stream_id);
 
             const auto& video_characteristics = session->get_video_characteristics();
+            spdlog::info("Rendering {}x{} stream (interlaced={}, framerate={})",
+                         video_characteristics.width, video_characteristics.height,
+                         static_cast<bool>(video_characteristics.interlaced),
+                         video_characteristics.framerate);
 
             Deltacast::VideoMonitor::Renderer::WindowedRenderer renderer(
                 { "Live Content", static_cast<int>(video_characteristics.width / 2),
@@ -222,6 +230,8 @@ namespace Deltacast::VideoMonitor
             {
                 if (session->video_input_has_changed())
                 {
+                    spdlog::warn("Incoming signal changed on RX{}, restarting capture cycle",
+                                 m_stream_id);
                     m_shared_resources.incoming_signal_changed = true;
                     continue;
                 }
@@ -243,6 +253,11 @@ namespace Deltacast::VideoMonitor
             {
                 spdlog::error("Renderer thread encountered an error, rethrowing");
                 std::rethrow_exception(renderer_exception);
+            }
+
+            if (m_shared_resources.stop_is_requested)
+            {
+                spdlog::info("Stop requested, leaving monitor loop");
             }
         }
         return static_cast<int>(ExitCode::Success);
