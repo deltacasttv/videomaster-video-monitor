@@ -52,7 +52,6 @@
 #include <ipaddress/ipaddress.hpp>
 #include <ipaddress/ipv4-address.hpp>
 #include <iterator>
-#include <map>
 #include <memory>
 #include <spdlog/spdlog.h>
 #include <string>
@@ -71,8 +70,8 @@ namespace Deltacast::VideoMonitor::Session
         constexpr uint32_t sps_port_index = 1;
         constexpr uint32_t ipv6_byte_count = 16;
 
-        auto
-        parse_sdp_ip_address(const VHD_SDP_IP_ADDRESS& ip_address_struct) -> ipaddress::ip_address
+        auto parse_sdp_ip_address(const VHD_SDP_IP_ADDRESS& ip_address_struct)
+            -> ipaddress::ip_address
         {
             if (ip_address_struct.Version == VHD_SDP_IP_VERSION_4)
             {
@@ -90,47 +89,8 @@ namespace Deltacast::VideoMonitor::Session
             throw Exceptions::ConfigurationException("Unsupported IP version in SDP");
         }
 
-        auto classify_st2110_20_media(std::vector<VHD_SDP_MEDIA> media_vec)
-            -> std::vector<std::pair<VHD_SDP_MEDIA, IpInputSession::MediaRole>>
-        {
-            using MediaRole = IpInputSession::MediaRole;
-            std::vector<std::pair<VHD_SDP_MEDIA, MediaRole>> result;
-            std::map<BYTE, uint32_t>                         group_occurrence;
-
-            for (auto& media : media_vec)
-            {
-                if (media.MediaType != VHD_SDP_MEDIA_TYPE_ST2110_20)
-                {
-                    continue;
-                }
-
-                if (media.GroupId == 0)
-                {
-                    result.emplace_back(media, MediaRole::Main);
-                }
-                else
-                {
-                    auto& count = group_occurrence[media.GroupId];
-                    ++count;
-                    if (count == 1)
-                    {
-                        result.emplace_back(media, MediaRole::Main);
-                    }
-                    else if (count == 2)
-                    {
-                        result.emplace_back(media, MediaRole::Sps);
-                    }
-                    else
-                    {
-                        result.emplace_back(media, MediaRole::Ignored);
-                    }
-                }
-            }
-            return result;
-        }
-
-        auto
-        to_ipv6_bytes(const ipaddress::ip_address& addr) -> std::array<uint8_t, ipv6_byte_count>
+        auto to_ipv6_bytes(const ipaddress::ip_address& addr)
+            -> std::array<uint8_t, ipv6_byte_count>
         {
             const auto&                          v6_bytes = addr.v6().value().bytes();
             std::array<uint8_t, ipv6_byte_count> result{};
@@ -394,7 +354,52 @@ namespace Deltacast::VideoMonitor::Session
         auto [session, media] = Deltacast::Wrapper::Helper::Ip::read_sdp(sdp_content);
         this->m_session = session;
         spdlog::debug("Parsed SDP session with {} media description(s)", media.size());
-        this->m_classified_media = classify_st2110_20_media(std::move(media));
+        if (media.empty())
+        {
+            throw Exceptions::ConfigurationException(
+                "SDP file must contain at least one media description");
+        }
+
+        if (media[0].MediaType == VHD_SDP_MEDIA_TYPE_ST2110_20)
+        {
+            this->m_main_media = media[0];
+
+            if (media.size() > 1 && media[1].MediaType != VHD_SDP_MEDIA_TYPE_ST2110_20)
+            {
+                throw Exceptions::ConfigurationException(
+                    "If a second media description is present in the SDP file, it must be of "
+                    "type ST2110-20 for SPS");
+            }
+
+            if (media.size() > 1 && !m_network_configuration.has_sps)
+            {
+                spdlog::warn("A SPS media description is present in the SDP file but SPS is not "
+                             "enabled in network "
+                             "configuration. SPS stream will be ignored.");
+            }
+            else if (m_network_configuration.has_sps && media.size() == 1)
+            {
+                spdlog::warn("SPS is enabled in network configuration but only one media "
+                             "description found in SDP. SPS stream will be ignored.");
+            }
+            else if (m_network_configuration.has_sps && media.size() > 1)
+            {
+                this->m_sps_media = media[1];
+                m_use_sps_stream = true;
+            }
+
+            if (media.size() > 2)
+            {
+                spdlog::warn(
+                    "SDP file contains more than 2 media descriptions. Only the first 2 will "
+                    "be processed.");
+            }
+        }
+        else
+        {
+            throw Exceptions::ConfigurationException(
+                "The media described in the SDP file must be of type ST2110-20");
+        }
     }
 
     void IpInputSession::join_multicast_group(const VHD_SDP_IP_ADDRESS& ip_address_struct,
@@ -463,7 +468,7 @@ namespace Deltacast::VideoMonitor::Session
                           m_network_configuration.gateway_v4,
                           "DHCP mode requested but DHCP is not supported on this IP port");
 
-        if (m_network_configuration.has_sps)
+        if (m_use_sps_stream)
         {
             spdlog::debug("Configuring SPS port {}", sps_port_index);
             configure_ip_port(
@@ -473,34 +478,11 @@ namespace Deltacast::VideoMonitor::Session
                 "DHCP mode requested for SPS but DHCP is not supported on SPS IP port");
         }
 
-        for (const auto& [media_description, role] : m_classified_media)
-        {
-            spdlog::trace("Preparing multicast subscription for SDP media group {}, MID '{}'",
-                          media_description.GroupId, media_description.MID);
+        join_multicast_group(m_main_media.DestinationIP, main_port_index);
 
-            if (role == MediaRole::Ignored)
-            {
-                spdlog::warn("SDP contains more than 2 media descriptions in group {}. "
-                             "Ignoring extra media.",
-                             media_description.GroupId);
-            }
-            else if (role == MediaRole::Sps)
-            {
-                if (m_network_configuration.has_sps)
-                {
-                    join_multicast_group(media_description.DestinationIP, sps_port_index);
-                }
-                else
-                {
-                    spdlog::warn("SDP contains a redundant (SPS) media stream in group {} but "
-                                 "SPS is not enabled in network configuration. Ignoring.",
-                                 media_description.GroupId);
-                }
-            }
-            else if (role == MediaRole::Main)
-            {
-                join_multicast_group(media_description.DestinationIP, main_port_index);
-            }
+        if (m_use_sps_stream)
+        {
+            join_multicast_group(m_sps_media.DestinationIP, sps_port_index);
         }
     }
 
@@ -514,56 +496,35 @@ namespace Deltacast::VideoMonitor::Session
         m_stream = std::make_unique<Deltacast::Wrapper::Ip2110Stream>(
             board.ip().ip2110().open_essence_stream(VHD_ET_ST2110_20, VHD_RX_CHANNEL, stream_id));
 
-        for (const auto& [media_description, role] : m_classified_media)
+        auto destination_ip_address = parse_sdp_ip_address(m_main_media.DestinationIP);
+        spdlog::info("Configuring main ST2110 media: destination {}, "
+                     "UDP {}, payload {}",
+                     destination_ip_address.to_string(), m_main_media.UdpPort,
+                     m_main_media.PayloadType);
+        configure_destination(m_stream->main_stream(), board.ip().port(main_port_index), m_session,
+                              m_main_media, destination_ip_address);
+
+        m_stream->video().set_video_standard(m_main_media.ST2110_20.VideoStandard);
+        m_stream->video().set_sampling_rate(m_main_media.ST2110_20.Sampling);
+        m_stream->video().set_bit_depth(m_main_media.ST2110_20.Depth);
+
+        m_video_characteristics = Deltacast::Wrapper::Helper::Ip::video_standard_to_characteristics(
+            m_main_media.ST2110_20.VideoStandard);
+
+        spdlog::info("Detected ST2110 video standard {} ({}x{}, interlaced={})",
+                     Deltacast::Wrapper::to_pretty_string(m_main_media.ST2110_20.VideoStandard),
+                     m_video_characteristics.width, m_video_characteristics.height,
+                     static_cast<bool>(m_video_characteristics.interlaced));
+
+        if (m_use_sps_stream)
         {
-            const auto ip_address = parse_sdp_ip_address(media_description.DestinationIP);
-
-            if (role == MediaRole::Ignored)
-            {
-                spdlog::warn("SDP contains more than 2 media descriptions in group {}. "
-                             "Ignoring extra media.",
-                             media_description.GroupId);
-            }
-            else if (role == MediaRole::Sps && !m_network_configuration.has_sps)
-            {
-                spdlog::warn("SDP contains a redundant (SPS) media stream in group {} but "
-                             "SPS is not enabled in network configuration. Ignoring.",
-                             media_description.GroupId);
-            }
-            else if (role == MediaRole::Sps)
-            {
-                spdlog::info("Configuring SPS ST2110 media (group {}): destination {}, UDP {}, "
-                             "payload {}",
-                             media_description.GroupId, ip_address.to_string(),
-                             media_description.UdpPort, media_description.PayloadType);
-                configure_destination(m_stream->sps_stream(), board.ip().port(sps_port_index),
-                                      m_session, media_description, ip_address);
-            }
-            else if (role == MediaRole::Main)
-            {
-
-                spdlog::info("Configuring main ST2110 media (group {}, MID '{}'): destination {}, "
-                             "UDP {}, payload {}",
-                             media_description.GroupId, media_description.MID,
-                             ip_address.to_string(), media_description.UdpPort,
-                             media_description.PayloadType);
-                configure_destination(m_stream->main_stream(), board.ip().port(main_port_index),
-                                      m_session, media_description, ip_address);
-
-                m_stream->video().set_video_standard(media_description.ST2110_20.VideoStandard);
-                m_stream->video().set_sampling_rate(media_description.ST2110_20.Sampling);
-                m_stream->video().set_bit_depth(media_description.ST2110_20.Depth);
-
-                m_video_characteristics =
-                    Deltacast::Wrapper::Helper::Ip::video_standard_to_characteristics(
-                        media_description.ST2110_20.VideoStandard);
-
-                spdlog::info("Detected ST2110 video standard {} ({}x{}, interlaced={})",
-                             Deltacast::Wrapper::to_pretty_string(
-                                 media_description.ST2110_20.VideoStandard),
-                             m_video_characteristics.width, m_video_characteristics.height,
-                             static_cast<bool>(m_video_characteristics.interlaced));
-            }
+            auto destination_ip_address = parse_sdp_ip_address(m_sps_media.DestinationIP);
+            spdlog::info("Configuring SPS ST2110 media: destination {}, UDP {}, "
+                         "payload {}",
+                         destination_ip_address.to_string(), m_sps_media.UdpPort,
+                         m_sps_media.PayloadType);
+            configure_destination(m_stream->sps_stream(), board.ip().port(sps_port_index),
+                                  m_session, m_sps_media, destination_ip_address);
         }
     }
 
@@ -589,15 +550,14 @@ namespace Deltacast::VideoMonitor::Session
 
     auto IpInputSession::get_video_buffer() -> std::pair<UBYTE*, ULONG>
     {
-
         this->ensure_board_is_opened();
         auto  current_slot = this->stream().pop_slot();
         auto& slot = static_cast<Deltacast::Wrapper::Ip2110Slot&>(*current_slot);
         return slot.video_essence().buffer();
     }
 
-    auto
-    IpInputSession::get_video_characteristics() -> Deltacast::Wrapper::Helper::VideoCharacteristics
+    auto IpInputSession::get_video_characteristics()
+        -> Deltacast::Wrapper::Helper::VideoCharacteristics
     {
         return { m_video_characteristics.width, m_video_characteristics.height,
                  m_video_characteristics.interlaced, m_video_characteristics.framerate };

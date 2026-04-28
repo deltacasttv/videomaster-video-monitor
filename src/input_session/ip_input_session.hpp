@@ -66,13 +66,6 @@ namespace Deltacast::VideoMonitor::Session
     class IpInputSession : public InputSession<Deltacast::Wrapper::Ip2110Stream>
     {
      public:
-        enum class MediaRole
-        {
-            Main,
-            Sps,
-            Ignored
-        };
-
         explicit IpInputSession(const IpInputSessionConfig&               config,
                                 Deltacast::VideoMonitor::SharedResources& shared_resources);
 
@@ -92,8 +85,10 @@ namespace Deltacast::VideoMonitor::Session
 
         IpNetworkConfiguration                                   m_network_configuration;
         VHD_SDP_SESSION                                          m_session;
-        std::vector<std::pair<VHD_SDP_MEDIA, MediaRole>>         m_classified_media;
+        VHD_SDP_MEDIA                                            m_main_media;
+        VHD_SDP_MEDIA                                            m_sps_media;
         std::vector<std::pair<uint32_t, ipaddress::ip_address>>  m_multicast_groups;
         Deltacast::Wrapper::Helper::St211020VideoCharacteristics m_video_characteristics;
+        bool                                                     m_use_sps_stream{ false };
     };
 }  // namespace Deltacast::VideoMonitor::Session
