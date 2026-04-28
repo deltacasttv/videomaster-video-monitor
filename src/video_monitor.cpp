@@ -237,10 +237,20 @@ namespace Deltacast::VideoMonitor
                     continue;
                 }
 
+                try
                 {
                     auto [buffer, buffer_size] = session->get_video_buffer();
 
                     renderer.render_buffer(buffer, buffer_size);
+                }
+                catch (Deltacast::Wrapper::RecoverableApiException& ex)
+                {
+                    spdlog::warn("Recoverable error while capturing video buffer: {}", ex.what());
+                }
+                catch (...)
+                {
+                    spdlog::error("Unexpected error while capturing video buffer");
+                    throw;
                 }
 
                 {
