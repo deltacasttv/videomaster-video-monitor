@@ -25,6 +25,7 @@
 #include <VideoMasterCppApi/api.hpp>
 #include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterCppApi/exception.hpp>
+#include <bits/chrono.h>
 #include <chrono>
 #include <exception>
 #include <fmt/format.h>
@@ -50,8 +51,8 @@ namespace Deltacast::VideoMonitor
         constexpr auto log_file_name = "video_monitor.log";
         constexpr auto window_refresh_interval = 10ms;
 
-        auto parse_ipv4(const std::string& address, const std::string& option_name)
-            -> ipaddress::ipv4_address
+        auto parse_ipv4(const std::string& address,
+                        const std::string& option_name) -> ipaddress::ipv4_address
         {
             try
             {

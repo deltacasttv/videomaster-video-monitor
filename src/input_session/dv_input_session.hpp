@@ -37,8 +37,8 @@ namespace Deltacast::VideoMonitor::Session
         virtual ~DvInputSession() = default;
         void prepare_video_stream() override;
         void configure_video_stream() override;
-        auto get_video_characteristics()
-            -> Deltacast::Wrapper::Helper::VideoCharacteristics override;
+        auto
+        get_video_characteristics() -> Deltacast::Wrapper::Helper::VideoCharacteristics override;
 
      private:
         auto            has_video_input_changed() -> bool override;

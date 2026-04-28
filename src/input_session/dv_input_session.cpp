@@ -67,9 +67,9 @@ namespace Deltacast::VideoMonitor::Session
 
         spdlog::info("Detected DV signal on RX{}: {}x{}, interlaced={}, framerate={}, "
                      "colorspace={}, sampling={}",
-                     this->stream_id(), m_active_width, m_active_height,
-                     static_cast<bool>(m_interlaced), static_cast<int>(m_framerate),
-                     static_cast<int>(m_cable_color_space), static_cast<int>(m_cable_sampling));
+                     this->stream_id(), m_active_width, m_active_height, m_interlaced,
+                     static_cast<int>(m_framerate), static_cast<int>(m_cable_color_space),
+                     static_cast<int>(m_cable_sampling));
     }
 
     void DvInputSession::configure_video_stream()
@@ -107,9 +107,8 @@ namespace Deltacast::VideoMonitor::Session
             spdlog::debug("DV signal change details on RX{}: {}x{}->{ }x{}, interlaced {}->{}, "
                           "framerate {}->{}, colorspace {}->{}, sampling {}->{}",
                           this->stream_id(), m_active_width, m_active_height, stream.active_width(),
-                          stream.active_height(), static_cast<bool>(m_interlaced),
-                          static_cast<bool>(stream.interlaced()), static_cast<int>(m_framerate),
-                          static_cast<int>(stream.frame_rate()),
+                          stream.active_height(), m_interlaced, stream.interlaced(),
+                          static_cast<int>(m_framerate), static_cast<int>(stream.frame_rate()),
                           static_cast<int>(m_cable_color_space),
                           static_cast<int>(stream.cable_color_space()),
                           static_cast<int>(m_cable_sampling),
@@ -120,8 +119,8 @@ namespace Deltacast::VideoMonitor::Session
                framerate_changed || cable_color_space_changed || cable_sampling_changed;
     }
 
-    auto DvInputSession::get_video_characteristics()
-        -> Deltacast::Wrapper::Helper::VideoCharacteristics
+    auto
+    DvInputSession::get_video_characteristics() -> Deltacast::Wrapper::Helper::VideoCharacteristics
     {
         return m_signal_characteristics;
     }

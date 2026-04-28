@@ -24,6 +24,7 @@
 #include <VideoMasterCppApi/helper/sdp.hpp>
 #include <VideoMasterCppApi/helper/video.hpp>
 #include <VideoMasterCppApi/slot/ip/st2110_slot.hpp>
+#include <VideoMasterCppApi/stream/ip/essence.hpp>
 #include <VideoMasterCppApi/stream/ip/st2110_stream.hpp>
 #include <VideoMasterCppApi/stream/ip/video.hpp>
 #include <VideoMasterCppApi/to_string.hpp>
@@ -38,6 +39,7 @@
 #include <filesystem>
 #include <fmt/format.h>
 #include <fstream>
+#include <functional>
 #include <ipaddress/ip-address-base.hpp>
 #include <ipaddress/ip-any-address.hpp>
 #include <ipaddress/ipaddress.hpp>
@@ -55,14 +57,15 @@ namespace Deltacast::VideoMonitor::Session
 {
     namespace
     {
+
         constexpr uint32_t dhcp_timeout_seconds = 10;
         constexpr uint32_t dhcp_poll_interval_ms = 100;
         constexpr uint32_t main_port_index = 0;
         constexpr uint32_t sps_port_index = 1;
         constexpr uint32_t ipv6_byte_count = 16;
 
-        auto parse_sdp_ip_address(const VHD_SDP_IP_ADDRESS& ip_address_struct)
-            -> ipaddress::ip_address
+        auto
+        parse_sdp_ip_address(const VHD_SDP_IP_ADDRESS& ip_address_struct) -> ipaddress::ip_address
         {
             if (ip_address_struct.Version == VHD_SDP_IP_VERSION_4)
             {
@@ -80,39 +83,47 @@ namespace Deltacast::VideoMonitor::Session
             throw Exceptions::ConfigurationException("Unsupported IP version in SDP");
         }
 
-        auto classify_st2110_20_media(std::vector<VHD_SDP_MEDIA> media)
+        auto classify_st2110_20_media(std::vector<VHD_SDP_MEDIA> media_vec)
             -> std::vector<std::pair<VHD_SDP_MEDIA, IpInputSession::MediaRole>>
         {
             using MediaRole = IpInputSession::MediaRole;
             std::vector<std::pair<VHD_SDP_MEDIA, MediaRole>> result;
             std::map<BYTE, uint32_t>                         group_occurrence;
 
-            for (auto& m : media)
+            for (auto& media : media_vec)
             {
-                if (m.MediaType != VHD_SDP_MEDIA_TYPE_ST2110_20)
-                    continue;
-
-                if (m.GroupId == 0)
+                if (media.MediaType != VHD_SDP_MEDIA_TYPE_ST2110_20)
                 {
-                    result.emplace_back(m, MediaRole::Main);
+                    continue;
+                }
+
+                if (media.GroupId == 0)
+                {
+                    result.emplace_back(media, MediaRole::Main);
                 }
                 else
                 {
-                    auto& count = group_occurrence[m.GroupId];
+                    auto& count = group_occurrence[media.GroupId];
                     ++count;
                     if (count == 1)
-                        result.emplace_back(m, MediaRole::Main);
+                    {
+                        result.emplace_back(media, MediaRole::Main);
+                    }
                     else if (count == 2)
-                        result.emplace_back(m, MediaRole::Sps);
+                    {
+                        result.emplace_back(media, MediaRole::Sps);
+                    }
                     else
-                        result.emplace_back(m, MediaRole::Ignored);
+                    {
+                        result.emplace_back(media, MediaRole::Ignored);
+                    }
                 }
             }
             return result;
         }
 
-        auto to_ipv6_bytes(const ipaddress::ip_address& addr)
-            -> std::array<uint8_t, ipv6_byte_count>
+        auto
+        to_ipv6_bytes(const ipaddress::ip_address& addr) -> std::array<uint8_t, ipv6_byte_count>
         {
             const auto&                          v6_bytes = addr.v6().value().bytes();
             std::array<uint8_t, ipv6_byte_count> result{};
@@ -194,6 +205,163 @@ namespace Deltacast::VideoMonitor::Session
                           port_index, ip_address_v4.to_string(), subnet_mask_v4.to_string(),
                           gateway_v4.to_string());
         };
+
+        auto set_stream_address(
+            Deltacast::Wrapper::StreamComponents::IpComponents::Essence&            stream,
+            const ipaddress::ip_address&                                            ip_address,
+            const std::function<void(Deltacast::Wrapper::StreamComponents::IpComponents::Essence&,
+                                     uint32_t)>&                                    set_v4,
+            const std::function<void(Deltacast::Wrapper::StreamComponents::IpComponents::Essence&,
+                                     const std::array<uint8_t, ipv6_byte_count>&)>& set_v6,
+            const char* address_kind) -> void
+        {
+            if (ip_address.is_v4())
+            {
+                set_v4(stream, ip_address.to_uint32());
+                spdlog::trace("Configuring {} IP address {} for IPv4 stream", address_kind,
+                              ip_address.to_string());
+                return;
+            }
+
+            if (ip_address.is_v6())
+            {
+                set_v6(stream, to_ipv6_bytes(ip_address));
+                spdlog::trace("Configuring {} IP address {} for IPv6 stream", address_kind,
+                              ip_address.to_string());
+            }
+        }
+
+        auto
+        set_destination_address(Deltacast::Wrapper::StreamComponents::IpComponents::Essence& stream,
+                                const ipaddress::ip_address& ip_address) -> void
+        {
+            set_stream_address(
+                stream, ip_address,
+                [](Deltacast::Wrapper::StreamComponents::IpComponents::Essence& current_stream,
+                   uint32_t address_v4) { current_stream.set_destination_ip_address(address_v4); },
+                [](Deltacast::Wrapper::StreamComponents::IpComponents::Essence& current_stream,
+                   const std::array<uint8_t, ipv6_byte_count>&                  address_v6)
+                { current_stream.set_destination_ipv6_address(address_v6); },
+                "destination");
+        }
+
+        auto set_source_address(Deltacast::Wrapper::StreamComponents::IpComponents::Essence& stream,
+                                const ipaddress::ip_address& ip_address) -> void
+        {
+            set_stream_address(
+                stream, ip_address,
+                [](Deltacast::Wrapper::StreamComponents::IpComponents::Essence& current_stream,
+                   uint32_t address_v4) { current_stream.set_source_ip_address(address_v4); },
+                [](Deltacast::Wrapper::StreamComponents::IpComponents::Essence& current_stream,
+                   const std::array<uint8_t, ipv6_byte_count>&                  address_v6)
+                { current_stream.set_source_ipv6_address(address_v6); },
+                "source");
+        }
+
+        auto source_filter_sources_to_string(const VHD_SDP_MEDIA& media_description) -> std::string
+        {
+            std::string result;
+            for (ULONG i = 0; i < media_description.SourceFilter.SourceIPCount; ++i)
+            {
+                if (i > 0)
+                {
+                    result += ", ";
+                }
+                result += parse_sdp_ip_address(media_description.SourceFilter.SourceIPArray[i])
+                              .to_string();
+            }
+            return result;
+        }
+
+        auto configure_multicast_filtering(
+            Deltacast::Wrapper::StreamComponents::IpComponents::Essence& stream,
+            Deltacast::Wrapper::BoardComponents::IpComponents::Port&     port,
+            const VHD_SDP_MEDIA&                                         media_description) -> void
+        {
+            stream.set_filtering_mask(VHD_IP_FILTER_RTP_PAYLOAD_TYPE | VHD_IP_FILTER_UDP_PORT_DEST |
+                                      VHD_IP_FILTER_IP_ADDR_DEST);
+
+            if (!static_cast<bool>(media_description.SourceFilter.UseSourceFilter))
+            {
+                spdlog::trace(
+                    "Configuring multicast filtering for destination {} with no source filtering",
+                    ipaddress::ipv4_address::from_uint(
+                        media_description.SourceFilter.DestinationIP.AddressV4)
+                        .to_string());
+                return;
+            }
+
+            if (media_description.SourceFilter.DestinationIP.Version != VHD_SDP_IP_VERSION_4)
+            {
+                throw Exceptions::ConfigurationException(
+                    "Source filtering is only supported for IPv4 addresses");
+            }
+
+            spdlog::trace(
+                "Configuring multicast filtering for destination {}: filter mode {}, source "
+                "IPs {}",
+                ipaddress::ipv4_address::from_uint(
+                    media_description.SourceFilter.DestinationIP.AddressV4)
+                    .to_string(),
+                media_description.SourceFilter.FilterMode == VHD_SDP_FILTER_MODE_INCL ? "INCLUDE"
+                                                                                      : "EXCLUDE",
+                source_filter_sources_to_string(media_description));
+
+            port.multicast().set_source_mode(media_description.SourceFilter.DestinationIP.AddressV4,
+                                             media_description.SourceFilter.FilterMode ==
+                                                     VHD_SDP_FILTER_MODE_INCL
+                                                 ? VHD_IP_BRD_FILTERMODEMULTICAST_INCLUDE
+                                                 : VHD_IP_BRD_FILTERMODEMULTICAST_EXCLUDE);
+
+            for (ULONG i = 0; i < media_description.SourceFilter.SourceIPCount; ++i)
+            {
+                const auto source_ip_address = ipaddress::ipv4_address::from_uint(
+                    media_description.SourceFilter.SourceIPArray[i].AddressV4);
+                port.multicast().add_source(media_description.SourceFilter.DestinationIP.AddressV4,
+                                            source_ip_address.to_uint());
+            }
+        }
+
+        auto
+        configure_destination(Deltacast::Wrapper::StreamComponents::IpComponents::Essence& stream,
+                              Deltacast::Wrapper::BoardComponents::IpComponents::Port&     port,
+                              const VHD_SDP_SESSION&                                       session,
+                              const VHD_SDP_MEDIA&         media_description,
+                              const ipaddress::ip_address& ip_address) -> void
+        {
+            set_destination_address(stream, ip_address);
+            spdlog::trace(
+                "Configured destination IP address for stream: {}",
+                ipaddress::ip_address::from_uint(stream.destination_ip_address()).to_string());
+
+            if (ip_address.is_multicast() && port.has_multicast())
+            {
+                configure_multicast_filtering(stream, port, media_description);
+            }
+            else if (ip_address.is_multicast())
+            {
+                throw Exceptions::ConfigurationException(
+                    fmt::format("IP address {} in SDP is multicast but port does not support "
+                                "multicast reception",
+                                ip_address.to_string()));
+            }
+            else
+            {
+                spdlog::trace("Configuring unicast source IP address for destination {}",
+                              ip_address.to_string());
+                const auto source_ip_address = parse_sdp_ip_address(session.SourceIP);
+                spdlog::trace("Parsed source IP address {} from SDP session",
+                              source_ip_address.to_string());
+                set_source_address(stream, source_ip_address);
+                spdlog::trace(
+                    "Configured unicast source IP address for destination {}: {}",
+                    ip_address.to_string(),
+                    ipaddress::ip_address::from_uint(stream.source_ip_address()).to_string());
+            }
+
+            stream.set_destination_port(media_description.UdpPort);
+            stream.set_rtp_payload_type(media_description.PayloadType);
+        }
 
     }  // namespace
 
@@ -339,140 +507,6 @@ namespace Deltacast::VideoMonitor::Session
         m_stream = std::make_unique<Deltacast::Wrapper::Ip2110Stream>(
             board.ip().ip2110().open_essence_stream(VHD_ET_ST2110_20, VHD_RX_CHANNEL, stream_id));
 
-        const auto set_stream_address = [](auto& stream, const ipaddress::ip_address& ip_address,
-                                           auto&& set_v4, auto&& set_v6, const char* address_kind)
-        {
-            if (ip_address.is_v4())
-            {
-                set_v4(stream, ip_address.to_uint32());
-                spdlog::trace("Configuring {} IP address {} for IPv4 stream", address_kind,
-                              ip_address.to_string());
-            }
-            else if (ip_address.is_v6())
-            {
-                set_v6(stream, to_ipv6_bytes(ip_address));
-                spdlog::trace("Configuring {} IP address {} for IPv6 stream", address_kind,
-                              ip_address.to_string());
-            }
-        };
-
-        const auto set_destination_address =
-            [&](auto& stream, const ipaddress::ip_address& ip_address)
-        {
-            set_stream_address(
-                stream, ip_address, [](auto& current_stream, auto address_v4)
-                { current_stream.set_destination_ip_address(address_v4); },
-                [](auto& current_stream, const auto& address_v6)
-                { current_stream.set_destination_ipv6_address(address_v6); }, "destination");
-        };
-
-        const auto set_source_address = [&](auto& stream, const ipaddress::ip_address& ip_address)
-        {
-            set_stream_address(
-                stream, ip_address, [](auto& current_stream, auto address_v4)
-                { current_stream.set_source_ip_address(address_v4); },
-                [](auto& current_stream, const auto& address_v6)
-                { current_stream.set_source_ipv6_address(address_v6); }, "source");
-        };
-
-        const auto configure_multicast_filtering =
-            [](auto& stream, auto& port, const VHD_SDP_MEDIA& media_description)
-        {
-            stream.set_filtering_mask(VHD_IP_FILTER_RTP_PAYLOAD_TYPE | VHD_IP_FILTER_UDP_PORT_DEST |
-                                      VHD_IP_FILTER_IP_ADDR_DEST);
-
-            if (!static_cast<bool>(media_description.SourceFilter.UseSourceFilter))
-            {
-                spdlog::trace(
-                    "Configuring multicast filtering for destination {} with no source filtering",
-                    ipaddress::ipv4_address::from_uint(
-                        media_description.SourceFilter.DestinationIP.AddressV4)
-                        .to_string());
-                return;
-            }
-
-            if (media_description.SourceFilter.DestinationIP.Version != VHD_SDP_IP_VERSION_4)
-            {
-                throw Exceptions::ConfigurationException(
-                    "Source filtering is only supported for IPv4 addresses");
-            }
-
-            spdlog::trace(
-                "Configuring multicast filtering for destination {}: filter mode {}, source "
-                "IPs {}",
-                ipaddress::ipv4_address::from_uint(
-                    media_description.SourceFilter.DestinationIP.AddressV4)
-                    .to_string(),
-                media_description.SourceFilter.FilterMode == VHD_SDP_FILTER_MODE_INCL ? "INCLUDE"
-                                                                                      : "EXCLUDE",
-                [&]
-                {
-                    std::string result;
-                    for (ULONG i = 0; i < media_description.SourceFilter.SourceIPCount; ++i)
-                    {
-                        if (i > 0)
-                            result += ", ";
-                        result += parse_sdp_ip_address(
-                                      media_description.SourceFilter.SourceIPArray[i])
-                                      .to_string();
-                    }
-                    return result;
-                }());
-
-            port.multicast().set_source_mode(media_description.SourceFilter.DestinationIP.AddressV4,
-                                             media_description.SourceFilter.FilterMode ==
-                                                     VHD_SDP_FILTER_MODE_INCL
-                                                 ? VHD_IP_BRD_FILTERMODEMULTICAST_INCLUDE
-                                                 : VHD_IP_BRD_FILTERMODEMULTICAST_EXCLUDE);
-
-            for (ULONG i = 0; i < media_description.SourceFilter.SourceIPCount; ++i)
-            {
-                const auto source_ip_address = ipaddress::ipv4_address::from_uint(
-                    media_description.SourceFilter.SourceIPArray[i].AddressV4);
-                port.multicast().add_source(media_description.SourceFilter.DestinationIP.AddressV4,
-                                            source_ip_address.to_uint());
-            }
-        };
-
-        // Apply common destination configuration shared by main and SPS streams.
-        const auto configure_destination = [&](auto& stream, auto& port, const auto& session,
-                                               const auto& media_description,
-                                               const auto& ip_address)
-        {
-            set_destination_address(stream, ip_address);
-            spdlog::trace(
-                "Configured destination IP address for stream: {}",
-                ipaddress::ip_address::from_uint(stream.destination_ip_address()).to_string());
-
-            if (ip_address.is_multicast() && port.has_multicast())
-            {
-                configure_multicast_filtering(stream, port, media_description);
-            }
-            else if (ip_address.is_multicast())
-            {
-                throw Exceptions::ConfigurationException(
-                    fmt::format("IP address {} in SDP is multicast but port does not support "
-                                "multicast reception",
-                                ip_address.to_string()));
-            }
-            else
-            {
-                spdlog::trace("Configuring unicast source IP address for destination {}",
-                              ip_address.to_string());
-                auto source_ip_address = parse_sdp_ip_address(session.SourceIP);
-                spdlog::trace("Parsed source IP address {} from SDP session",
-                              source_ip_address.to_string());
-                set_source_address(stream, source_ip_address);
-                spdlog::trace(
-                    "Configured unicast source IP address for destination {}: {}",
-                    ip_address.to_string(),
-                    ipaddress::ip_address::from_uint(stream.source_ip_address()).to_string());
-            }
-
-            stream.set_destination_port(media_description.UdpPort);
-            stream.set_rtp_payload_type(media_description.PayloadType);
-        };
-
         for (const auto& [media_description, role] : m_classified_media)
         {
             const auto ip_address = parse_sdp_ip_address(media_description.DestinationIP);
@@ -483,31 +517,29 @@ namespace Deltacast::VideoMonitor::Session
                              "Ignoring extra media.",
                              media_description.GroupId);
             }
+            else if (role == MediaRole::Sps && !m_network_configuration.has_sps)
+            {
+                spdlog::warn("SDP contains a redundant (SPS) media stream in group {} but "
+                             "SPS is not enabled in network configuration. Ignoring.",
+                             media_description.GroupId);
+            }
             else if (role == MediaRole::Sps)
             {
-                if (m_network_configuration.has_sps)
-                {
-                    spdlog::info("Configuring SPS ST2110 media (group {}): destination {}, "
-                                 "UDP {}, payload {}",
-                                 media_description.GroupId, ip_address.to_string(),
-                                 media_description.UdpPort, media_description.PayloadType);
-                    configure_destination(m_stream->sps_stream(), board.ip().port(sps_port_index),
-                                          m_session, media_description, ip_address);
-                }
-                else
-                {
-                    spdlog::warn("SDP contains a redundant (SPS) media stream in group {} but "
-                                 "SPS is not enabled in network configuration. Ignoring.",
-                                 media_description.GroupId);
-                }
+                spdlog::info("Configuring SPS ST2110 media (group {}): destination {}, UDP {}, "
+                             "payload {}",
+                             media_description.GroupId, ip_address.to_string(),
+                             media_description.UdpPort, media_description.PayloadType);
+                configure_destination(m_stream->sps_stream(), board.ip().port(sps_port_index),
+                                      m_session, media_description, ip_address);
             }
             else if (role == MediaRole::Main)
             {
-                spdlog::info(
-                    "Configuring main ST2110 media (group {}, MID '{}'): destination {}, UDP {}, "
-                    "payload {}",
-                    media_description.GroupId, media_description.MID, ip_address.to_string(),
-                    media_description.UdpPort, media_description.PayloadType);
+
+                spdlog::info("Configuring main ST2110 media (group {}, MID '{}'): destination {}, "
+                             "UDP {}, payload {}",
+                             media_description.GroupId, media_description.MID,
+                             ip_address.to_string(), media_description.UdpPort,
+                             media_description.PayloadType);
                 configure_destination(m_stream->main_stream(), board.ip().port(main_port_index),
                                       m_session, media_description, ip_address);
 
@@ -557,8 +589,8 @@ namespace Deltacast::VideoMonitor::Session
         return slot.video_essence().buffer();
     }
 
-    auto IpInputSession::get_video_characteristics()
-        -> Deltacast::Wrapper::Helper::VideoCharacteristics
+    auto
+    IpInputSession::get_video_characteristics() -> Deltacast::Wrapper::Helper::VideoCharacteristics
     {
         return { m_video_characteristics.width, m_video_characteristics.height,
                  m_video_characteristics.interlaced, m_video_characteristics.framerate };
