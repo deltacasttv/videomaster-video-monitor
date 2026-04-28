@@ -21,7 +21,11 @@
 
 #include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterCppApi/helper/video.hpp>
+#if defined(__APPLE__)
+#include <VideoMasterHD/VideoMasterHD_Core.h>
+#else
 #include <VideoMasterHD_Core.h>
+#endif
 #include <cstdint>
 #include <memory>
 #include <utility>

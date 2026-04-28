@@ -25,7 +25,6 @@
 #include <VideoMasterCppApi/api.hpp>
 #include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterCppApi/exception.hpp>
-#include <bits/chrono.h>
 #include <chrono>
 #include <exception>
 #include <fmt/format.h>

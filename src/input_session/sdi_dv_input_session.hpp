@@ -21,7 +21,11 @@
 #include "shared_resources.hpp"
 
 #include <VideoMasterCppApi/board/board.hpp>
+#if defined(__APPLE__)
+#include <VideoMasterHD/VideoMasterHD_Core.h>
+#else
 #include <VideoMasterHD_Core.h>
+#endif
 #include <memory>
 #include <spdlog/spdlog.h>
 #include <utility>

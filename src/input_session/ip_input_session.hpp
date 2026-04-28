@@ -17,8 +17,13 @@
 #include <VideoMasterCppApi/helper/sdp.hpp>
 #include <VideoMasterCppApi/helper/video.hpp>
 #include <VideoMasterCppApi/stream/ip/st2110_stream.hpp>
+#if defined(__APPLE__)
+#include <VideoMasterHD/VideoMasterHD_Core.h>
+#include <VideoMasterHD/VideoMasterHD_SDP.h>
+#else
 #include <VideoMasterHD_Core.h>
 #include <VideoMasterHD_SDP.h>
+#endif
 #include <cstdint>
 #include <filesystem>
 #include <ipaddress/ip-any-address.hpp>

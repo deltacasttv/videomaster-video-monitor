@@ -17,8 +17,12 @@
 
 #include <videoviewer/videoviewer.hpp>
 
-#include "VideoMasterHD_Core.h"
 
+#if defined(__APPLE__)
+#include <VideoMasterHD/VideoMasterHD_Core.h>
+#else
+#include <VideoMasterHD_Core.h>
+#endif
 #include <atomic>
 #include <exception>
 #include <string>

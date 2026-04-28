@@ -23,7 +23,11 @@
 
 #include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterCppApi/to_string.hpp>
+#if defined(__APPLE__)
+#include <VideoMasterHD/VideoMasterHD_Core.h>
+#else
 #include <VideoMasterHD_Core.h>
+#endif
 #include <cstdint>
 #include <filesystem>
 #include <fmt/format.h>

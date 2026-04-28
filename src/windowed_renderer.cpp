@@ -16,7 +16,11 @@
 #include "windowed_renderer.hpp"
 #include "exceptions.hpp"
 
+#if defined(__APPLE__)
+#include <VideoMasterHD/VideoMasterHD_Core.h>
+#else
 #include <VideoMasterHD_Core.h>
+#endif
 #include <atomic>
 #include <chrono>
 #include <cstdint>

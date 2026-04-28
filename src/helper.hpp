@@ -23,7 +23,11 @@
 #include <VideoMasterCppApi/exception.hpp>
 #include <VideoMasterCppApi/helper/sdi.hpp>
 #include <VideoMasterCppApi/to_string.hpp>
+#if defined(__APPLE__)
+#include <VideoMasterHD/VideoMasterHD_Core.h>
+#else
 #include <VideoMasterHD_Core.h>
+#endif
 
 auto operator<<(std::ostream& output_stream, Deltacast::Wrapper::Board& board) -> std::ostream&;
 

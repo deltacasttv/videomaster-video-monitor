@@ -20,8 +20,14 @@
 
 #include <VideoMasterCppApi/helper/video.hpp>
 #include <VideoMasterCppApi/stream/sdi/sdi_stream.hpp>
+
+#if defined(__APPLE__)
+#include <VideoMasterHD/VideoMasterHD_Core.h>
+#include <VideoMasterHD/VideoMasterHD_Sdi.h>
+#else
 #include <VideoMasterHD_Core.h>
 #include <VideoMasterHD_Sdi.h>
+#endif
 
 namespace Deltacast::VideoMonitor::Session
 {

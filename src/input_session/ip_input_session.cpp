@@ -28,10 +28,17 @@
 #include <VideoMasterCppApi/stream/ip/st2110_stream.hpp>
 #include <VideoMasterCppApi/stream/ip/video.hpp>
 #include <VideoMasterCppApi/to_string.hpp>
+#if defined(__APPLE__)
+#include <VideoMasterHD/VideoMasterHD_Core.h>
+#include <VideoMasterHD/VideoMasterHD_Ip_Board.h>
+#include <VideoMasterHD/VideoMasterHD_Ip_ST2110_Board.h>
+#include <VideoMasterHD/VideoMasterHD_SDP.h>
+#else
 #include <VideoMasterHD_Core.h>
 #include <VideoMasterHD_Ip_Board.h>
 #include <VideoMasterHD_Ip_ST2110_Board.h>
 #include <VideoMasterHD_SDP.h>
+#endif
 #include <array>
 #include <chrono>
 #include <cstdint>
