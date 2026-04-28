@@ -109,7 +109,7 @@ namespace Deltacast::VideoMonitor::Session
         if (active_width_changed || active_height_changed || interlaced_changed ||
             framerate_changed || cable_color_space_changed || cable_sampling_changed)
         {
-            spdlog::debug("DV signal change details on RX{}: {}x{}->{ }x{}, interlaced {}->{}, "
+            spdlog::debug("DV signal change details on RX{}: {}x{}->{}x{}, interlaced {}->{}, "
                           "framerate {}->{}, colorspace {}->{}, sampling {}->{}",
                           this->stream_id(), m_active_width, m_active_height, stream.active_width(),
                           stream.active_height(), m_interlaced, stream.interlaced(),
@@ -124,8 +124,8 @@ namespace Deltacast::VideoMonitor::Session
                framerate_changed || cable_color_space_changed || cable_sampling_changed;
     }
 
-    auto
-    DvInputSession::get_video_characteristics() -> Deltacast::Wrapper::Helper::VideoCharacteristics
+    auto DvInputSession::get_video_characteristics()
+        -> Deltacast::Wrapper::Helper::VideoCharacteristics
     {
         return m_signal_characteristics;
     }

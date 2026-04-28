@@ -50,8 +50,8 @@ namespace Deltacast::VideoMonitor
         constexpr auto log_file_name = "video_monitor.log";
         constexpr auto window_refresh_interval = 10ms;
 
-        auto parse_ipv4(const std::string& address,
-                        const std::string& option_name) -> ipaddress::ipv4_address
+        auto parse_ipv4(const std::string& address, const std::string& option_name)
+            -> ipaddress::ipv4_address
         {
             try
             {
@@ -161,7 +161,19 @@ namespace Deltacast::VideoMonitor
     {
         if (m_device_id >= Deltacast::Wrapper::Board::count())
         {
-            spdlog::error("Invalid device ID");
+            spdlog::error("Invalid device ID, no board found at index {}", m_device_id);
+            return false;
+        }
+        return true;
+    }
+
+    auto VideoMonitorApp::check_stream_id() const -> bool
+    {
+        auto board = Deltacast::Wrapper::Board::open(m_device_id);
+        if (m_stream_id >= board.number_of_rx())
+        {
+            spdlog::error("Invalid stream ID, RX should be between 0 and {} for device {}",
+                          board.number_of_rx() - 1, m_device_id);
             return false;
         }
         return true;
@@ -179,6 +191,11 @@ namespace Deltacast::VideoMonitor
         spdlog::trace("Discovered {} devices", Deltacast::Wrapper::Board::count());
 
         if (!check_device_id())
+        {
+            return static_cast<int>(ExitCode::FailureUnexpected);
+        }
+
+        if (!check_stream_id())
         {
             return static_cast<int>(ExitCode::FailureUnexpected);
         }

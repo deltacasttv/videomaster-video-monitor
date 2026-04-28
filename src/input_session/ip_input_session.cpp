@@ -398,7 +398,9 @@ namespace Deltacast::VideoMonitor::Session
         else
         {
             throw Exceptions::ConfigurationException(
-                "The media described in the SDP file must be of type ST2110-20");
+                "The media described in the SDP file must be of type ST2110-20. Media type "
+                "found: " +
+                std::to_string(media[0].MediaType));
         }
     }
 

@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include "shared_resources.hpp"
 
@@ -50,5 +51,6 @@ namespace Deltacast::VideoMonitor
         void init_log();
 
         [[nodiscard]] auto check_device_id() const -> bool;
+        [[nodiscard]] auto check_stream_id() const -> bool;
     };
 }  // namespace Deltacast::VideoMonitor

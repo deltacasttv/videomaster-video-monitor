@@ -52,12 +52,24 @@ namespace Deltacast::VideoMonitor::Renderer
     auto WindowedRenderer::init(int image_width, int image_height,
                                 Deltacast::VideoViewer::InputFormat input_format) -> bool
     {
+        m_monitor_ready = false;
+        m_thread_exception = nullptr;
         m_monitor_thread = std::thread(&WindowedRenderer::monitor, this, image_width, image_height,
                                        input_format);
         while (!m_monitor_ready)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(monitor_wait_timeout_ms));
         }
+
+        if (m_thread_exception)
+        {
+            if (m_monitor_thread.joinable())
+            {
+                m_monitor_thread.join();
+            }
+            std::rethrow_exception(m_thread_exception);
+        }
+
         return true;
     }
 
@@ -76,6 +88,7 @@ namespace Deltacast::VideoMonitor::Renderer
             m_monitor_ready = true;
             m_monitor.render_loop(m_framerate_ms);
             m_monitor.release();
+            m_should_stop = true;
 
             return true;
         }
@@ -83,6 +96,7 @@ namespace Deltacast::VideoMonitor::Renderer
         {
             spdlog::error("Renderer exception: {}", e.what());
             m_thread_exception = std::current_exception();
+            m_monitor_ready = true;
             m_should_stop = true;
             return false;
         }
@@ -90,6 +104,7 @@ namespace Deltacast::VideoMonitor::Renderer
         {
             spdlog::error("Renderer unexpected exception: {}", e.what());
             m_thread_exception = std::current_exception();
+            m_monitor_ready = true;
             m_should_stop = true;
             return false;
         }
@@ -119,7 +134,7 @@ namespace Deltacast::VideoMonitor::Renderer
             }
             m_monitor.unlock_data();
         }
-        else  // windows has probaly been closed
+        else
         {
             spdlog::warn("Window has been closed");
             m_should_stop = true;
