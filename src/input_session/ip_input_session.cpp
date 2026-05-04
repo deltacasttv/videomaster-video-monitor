@@ -140,6 +140,14 @@ namespace Deltacast::VideoMonitor::Session
             spdlog::trace("Configuring IP port {} in {} mode", port_index,
                           network_mode_to_string(mode));
 
+            spdlog::debug(
+                "Configuring IP port {} - MAC address: {} ({}), factory MAC address: {} ({})",
+                port_index,
+                ipaddress::ipv6_address::from_uint(port.custom_mac_address()).to_string(),
+                port.custom_mac_address(),
+                ipaddress::ipv6_address::from_uint(port.factory_mac_address()).to_string(),
+                port.factory_mac_address());
+
             if (mode == IpNetworkMode::Dhcp)
             {
                 if (!port.has_dhcp())
@@ -245,8 +253,6 @@ namespace Deltacast::VideoMonitor::Session
             Deltacast::Wrapper::BoardComponents::IpComponents::Port&     port,
             const VHD_SDP_MEDIA&                                         media_description) -> void
         {
-            stream.set_filtering_mask(VHD_IP_FILTER_RTP_PAYLOAD_TYPE | VHD_IP_FILTER_UDP_PORT_DEST |
-                                      VHD_IP_FILTER_IP_ADDR_DEST);
 
             if (!static_cast<bool>(media_description.SourceFilter.UseSourceFilter))
             {
@@ -326,6 +332,8 @@ namespace Deltacast::VideoMonitor::Session
                     ipaddress::ip_address::from_uint(stream.source_ip_address()).to_string());
             }
 
+            stream.set_filtering_mask(VHD_IP_FILTER_RTP_PAYLOAD_TYPE | VHD_IP_FILTER_UDP_PORT_DEST |
+                                      VHD_IP_FILTER_IP_ADDR_DEST);
             stream.set_destination_port(media_description.UdpPort);
             stream.set_rtp_payload_type(media_description.PayloadType);
         }
