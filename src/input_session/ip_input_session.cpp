@@ -229,6 +229,25 @@ namespace Deltacast::VideoMonitor::Session
                 "source");
         }
 
+        auto stream_address_to_string(
+            const Deltacast::Wrapper::StreamComponents::IpComponents::Essence& stream,
+            const ipaddress::ip_address& configured_ip_address, bool destination_address)
+            -> std::string
+        {
+            if (configured_ip_address.is_v6())
+            {
+                const auto bytes = destination_address ? stream.destination_ipv6_address()
+                                                       : stream.source_ipv6_address();
+                return ipaddress::ip_address::from_bytes(bytes.data(), bytes.size(),
+                                                         ipaddress::ip_version::V6)
+                    .to_string();
+            }
+
+            const auto address_v4 = destination_address ? stream.destination_ip_address()
+                                                        : stream.source_ip_address();
+            return ipaddress::ip_address::from_uint(address_v4).to_string();
+        }
+
         auto source_filter_sources_to_string(const VHD_SDP_MEDIA& media_description) -> std::string
         {
             std::string result;
@@ -299,9 +318,10 @@ namespace Deltacast::VideoMonitor::Session
                               const ipaddress::ip_address& ip_address) -> void
         {
             set_destination_address(stream, ip_address);
-            spdlog::trace(
-                "Configured destination IP address for stream: {}",
-                ipaddress::ip_address::from_uint(stream.destination_ip_address()).to_string());
+            const auto applied_destination_ip_address = stream_address_to_string(stream, ip_address,
+                                                                                 true);
+            spdlog::trace("Configured destination IP address for stream: requested={}, applied={}",
+                          ip_address.to_string(), applied_destination_ip_address);
 
             if (ip_address.is_multicast() && port.has_multicast())
             {
@@ -322,10 +342,14 @@ namespace Deltacast::VideoMonitor::Session
                 spdlog::trace("Parsed source IP address {} from SDP session",
                               source_ip_address.to_string());
                 set_source_address(stream, source_ip_address);
+                const auto applied_source_ip_address = stream_address_to_string(stream,
+                                                                                source_ip_address,
+                                                                                false);
                 spdlog::trace(
-                    "Configured unicast source IP address for destination {}: {}",
-                    ip_address.to_string(),
-                    ipaddress::ip_address::from_uint(stream.source_ip_address()).to_string());
+                    "Configured unicast source IP address for destination {}: requested={}, "
+                    "applied={}",
+                    ip_address.to_string(), source_ip_address.to_string(),
+                    applied_source_ip_address);
             }
 
             stream.set_filtering_mask(VHD_IP_FILTER_RTP_PAYLOAD_TYPE | VHD_IP_FILTER_UDP_PORT_DEST |
