@@ -49,8 +49,8 @@ namespace Deltacast::VideoMonitor::Renderer
         WindowedRenderer(WindowedRenderer&&) = delete;
         auto operator=(WindowedRenderer&&) -> WindowedRenderer& = delete;
 
-        auto init(int image_width, int image_height,
-                  Deltacast::VideoViewer::InputFormat input_format) -> bool;
+        void init(int image_width, int image_height,
+              Deltacast::VideoViewer::InputFormat input_format);
         void render_buffer(BYTE* buffer, ULONG buffer_size);
         auto stop() -> bool;
 
@@ -69,7 +69,7 @@ namespace Deltacast::VideoMonitor::Renderer
         std::atomic_bool   m_monitor_ready;
         std::exception_ptr m_thread_exception;
 
-        auto monitor(int image_width, int image_height,
-                     Deltacast::VideoViewer::InputFormat input_format) -> bool;
+        void monitor(int image_width, int image_height,
+                     Deltacast::VideoViewer::InputFormat input_format);
     };
 }  // namespace Deltacast::VideoMonitor::Renderer

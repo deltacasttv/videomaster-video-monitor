@@ -49,8 +49,8 @@ namespace Deltacast::VideoMonitor::Renderer
         stop();
     }
 
-    auto WindowedRenderer::init(int image_width, int image_height,
-                                Deltacast::VideoViewer::InputFormat input_format) -> bool
+    void WindowedRenderer::init(int image_width, int image_height,
+                                Deltacast::VideoViewer::InputFormat input_format)
     {
         m_monitor_ready = false;
         m_thread_exception = nullptr;
@@ -70,11 +70,10 @@ namespace Deltacast::VideoMonitor::Renderer
             std::rethrow_exception(m_thread_exception);
         }
 
-        return true;
     }
 
-    auto WindowedRenderer::monitor(int image_width, int image_height,
-                                   Deltacast::VideoViewer::InputFormat input_format) -> bool
+    void WindowedRenderer::monitor(int image_width, int image_height,
+                                   Deltacast::VideoViewer::InputFormat input_format)
     {
         try
         {
@@ -89,8 +88,6 @@ namespace Deltacast::VideoMonitor::Renderer
             m_monitor.render_loop(m_framerate_ms);
             m_monitor.release();
             m_should_stop = true;
-
-            return true;
         }
         catch (const Deltacast::VideoMonitor::Exceptions::VideoMonitorException& e)
         {
@@ -98,7 +95,6 @@ namespace Deltacast::VideoMonitor::Renderer
             m_thread_exception = std::current_exception();
             m_monitor_ready = true;
             m_should_stop = true;
-            return false;
         }
         catch (const std::exception& e)
         {
@@ -106,7 +102,6 @@ namespace Deltacast::VideoMonitor::Renderer
             m_thread_exception = std::current_exception();
             m_monitor_ready = true;
             m_should_stop = true;
-            return false;
         }
     }
 
