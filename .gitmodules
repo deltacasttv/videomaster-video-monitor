@@ -1,0 +1,3 @@
+[submodule "video-viewer"]
+	path = deps/video-viewer
+	url = https://github.com/deltacasttv/video-viewer.git
