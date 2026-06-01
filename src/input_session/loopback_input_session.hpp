@@ -32,21 +32,21 @@
 
 namespace Deltacast::VideoMonitor::Session
 {
-    struct SdiDvInputSessionConfiguration : public InputSessionConfig
+    struct LoopbackInputSessionConfiguration : public InputSessionConfig
     {
     };
 
     template <typename TStream>
-    class SdiDvInputSession : public InputSession<TStream>
+    class LoopbackInputSession : public InputSession<TStream>
     {
      public:
-        explicit SdiDvInputSession(const SdiDvInputSessionConfiguration&     config,
-                                   Deltacast::VideoMonitor::SharedResources& shared_resources)
+        explicit LoopbackInputSession(const LoopbackInputSessionConfiguration&  config,
+                                      Deltacast::VideoMonitor::SharedResources& shared_resources)
             : InputSession<TStream>(config, shared_resources)
         {
         }
 
-        virtual ~SdiDvInputSession() = default;
+        virtual ~LoopbackInputSession() = default;
 
         void open_board() override
         {
@@ -79,34 +79,6 @@ namespace Deltacast::VideoMonitor::Session
             spdlog::trace("Board {} opened for RX{}", this->device_id(), this->stream_id());
         }
 
-        auto video_input_has_changed() -> bool override
-        {
-            auto& board = this->board();
-            this->ensure_stream_is_prepared();
-
-            if (!Deltacast::VideoMonitor::Helper::wait_for_input(
-                    board.rx(this->stream_id()), this->shared_resources().stop_is_requested))
-            {
-                throw Deltacast::VideoMonitor::Exceptions::SignalDetectionException(
-                    "Failed to wait for input signal change");
-            }
-
-            const auto input_has_changed = has_video_input_changed();
-            if (input_has_changed)
-            {
-                spdlog::warn("Video input characteristics changed on RX{}", this->stream_id());
-            }
-
-            return input_has_changed;
-        }
-
-        auto get_video_buffer() -> std::pair<UBYTE*, ULONG> override
-        {
-            this->ensure_board_is_opened();
-            auto slot = this->stream().pop_slot();
-            return slot->video().buffer();
-        }
-
      protected:
         void disable_loopback()
         {
@@ -132,8 +104,5 @@ namespace Deltacast::VideoMonitor::Session
                 spdlog::trace("No loopback to disable on RX{}", this->stream_id());
             }
         }
-
-     private:
-        auto has_video_input_changed() -> bool override = 0;
     };
 }  // namespace Deltacast::VideoMonitor::Session

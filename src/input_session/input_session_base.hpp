@@ -55,8 +55,9 @@ namespace Deltacast::VideoMonitor::Session
         virtual void start_video_stream() = 0;
         virtual auto video_input_has_changed() -> bool = 0;
         virtual auto get_video_buffer() -> std::pair<UBYTE*, ULONG> = 0;
-        virtual auto
-        get_video_characteristics() -> Deltacast::Wrapper::Helper::VideoCharacteristics = 0;
+
+        virtual auto get_video_characteristics()
+            -> Deltacast::Wrapper::Helper::VideoCharacteristics = 0;
         virtual auto get_video_slots_statistics() -> std::pair<ULONG, ULONG> = 0;
 
      protected:
@@ -87,9 +88,9 @@ namespace Deltacast::VideoMonitor::Session
             }
         }
 
-     private:
         virtual auto has_video_input_changed() -> bool = 0;
 
+     private:
         uint32_t m_device_id;
         uint32_t m_stream_id;
 

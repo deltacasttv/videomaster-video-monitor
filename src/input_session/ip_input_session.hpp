@@ -54,7 +54,6 @@ namespace Deltacast::VideoMonitor::Session
         IpNetworkMode           sps_mode = IpNetworkMode::Dhcp;
         ipaddress::ipv4_address sps_ip_address_v4;
         ipaddress::ipv4_address sps_subnet_mask_v4;
-        ipaddress::ipv4_address sps_gateway_v4;
     };
 
     struct IpInputSessionConfig : InputSessionConfig
@@ -74,21 +73,23 @@ namespace Deltacast::VideoMonitor::Session
         void open_board() override;
         void prepare_video_stream() override;
         void configure_video_stream() override;
-        auto has_video_input_changed() -> bool override;
         auto video_input_has_changed() -> bool override;
         auto get_video_buffer() -> std::pair<UBYTE*, ULONG> override;
         auto get_video_characteristics()
             -> Deltacast::Wrapper::Helper::VideoCharacteristics override;
 
+     protected:
+        auto has_video_input_changed() -> bool override;
+
      private:
         void join_multicast_group(const VHD_SDP_IP_ADDRESS& ip_address_struct, uint32_t port_index);
 
-        IpNetworkConfiguration                                   m_network_configuration;
-        VHD_SDP_SESSION                                          m_session;
-        VHD_SDP_MEDIA                                            m_main_media;
-        VHD_SDP_MEDIA                                            m_sps_media;
-        std::vector<std::pair<uint32_t, ipaddress::ip_address>>  m_multicast_groups;
-        Deltacast::Wrapper::Helper::St211020VideoCharacteristics m_video_characteristics;
-        bool                                                     m_use_sps_stream{ false };
+        IpNetworkConfiguration                                              m_network_configuration;
+        VHD_SDP_SESSION                                                     m_session;
+        VHD_SDP_MEDIA                                                       m_main_media;
+        VHD_SDP_MEDIA                                                       m_sps_media;
+        std::vector<std::pair<uint32_t, ipaddress::ip_address>>             m_multicast_groups;
+        Deltacast::Wrapper::Helper::VideoCharacteristicsFractionalFramerate m_video_characteristics;
+        bool m_use_sps_stream{ false };
     };
 }  // namespace Deltacast::VideoMonitor::Session

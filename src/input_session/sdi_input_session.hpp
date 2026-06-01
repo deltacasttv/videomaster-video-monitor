@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include "sdi_dv_input_session.hpp"
+#include "loopback_input_session.hpp"
 #include "shared_resources.hpp"
 
 #include <VideoMasterCppApi/helper/video.hpp>
@@ -31,11 +31,11 @@
 
 namespace Deltacast::VideoMonitor::Session
 {
-    struct SdiInputSessionConfiguration : public SdiDvInputSessionConfiguration
+    struct SdiInputSessionConfiguration : public LoopbackInputSessionConfiguration
     {
     };
 
-    class SdiInputSession : public SdiDvInputSession<Deltacast::Wrapper::SdiStream>
+    class SdiInputSession : public LoopbackInputSession<Deltacast::Wrapper::SdiStream>
     {
      public:
         explicit SdiInputSession(const SdiInputSessionConfiguration&       config,
@@ -46,9 +46,10 @@ namespace Deltacast::VideoMonitor::Session
         auto get_video_characteristics()
             -> Deltacast::Wrapper::Helper::VideoCharacteristics override;
 
-     private:
+     protected:
         auto has_video_input_changed() -> bool override;
 
+     private:
         VHD_VIDEOSTANDARD m_video_standard{};
         VHD_CLOCKDIVISOR  m_clock_divisor{};
         VHD_INTERFACE     m_interface{};

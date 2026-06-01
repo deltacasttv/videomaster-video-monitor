@@ -16,8 +16,10 @@
 #pragma once
 
 #include "exceptions.hpp"
+#include "helper.hpp"
 #include "input_session_base.hpp"
 #include "shared_resources.hpp"
+
 
 #include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterCppApi/helper/video.hpp>
@@ -54,6 +56,34 @@ namespace Deltacast::VideoMonitor::Session
         {
             auto& stream = this->stream();
             return { stream.buffer_queue().slots_count(), stream.buffer_queue().slots_dropped() };
+        }
+
+        virtual auto video_input_has_changed() -> bool override
+        {
+            auto& board = this->board();
+            this->ensure_stream_is_prepared();
+
+            if (!Deltacast::VideoMonitor::Helper::wait_for_input(
+                    board.rx(this->stream_id()), this->shared_resources().stop_is_requested))
+            {
+                throw Deltacast::VideoMonitor::Exceptions::SignalDetectionException(
+                    "Failed to wait for input signal change");
+            }
+
+            const auto input_has_changed = has_video_input_changed();
+            if (input_has_changed)
+            {
+                spdlog::warn("Video input characteristics changed on RX{}", this->stream_id());
+            }
+
+            return input_has_changed;
+        }
+
+        virtual auto get_video_buffer() -> std::pair<UBYTE*, ULONG> override
+        {
+            this->ensure_board_is_opened();
+            auto slot = this->stream().pop_slot();
+            return slot->video().buffer();
         }
 
      protected:

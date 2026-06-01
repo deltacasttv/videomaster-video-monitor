@@ -36,14 +36,13 @@ namespace Deltacast::VideoMonitor
         uint32_t                                  m_device_id = 0;
         uint32_t                                  m_stream_id = 0;
         std::optional<std::filesystem::path>      m_sdp_file_path;
+        std::optional<std::string>                m_gateway;
         std::optional<bool>                       m_ip_dhcp;
         std::optional<std::string>                m_ip_address;
         std::optional<std::string>                m_ip_subnet;
-        std::optional<std::string>                m_ip_gateway;
         std::optional<bool>                       m_ip_sps_dhcp;
         std::optional<std::string>                m_ip_sps_address;
         std::optional<std::string>                m_ip_sps_subnet;
-        std::optional<std::string>                m_ip_sps_gateway;
         std::string                               m_log_level = "info";
         std::filesystem::path                     m_log_directory = ".";
 

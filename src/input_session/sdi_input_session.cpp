@@ -15,7 +15,7 @@
 
 #include "sdi_input_session.hpp"
 #include "helper.hpp"
-#include "sdi_dv_input_session.hpp"
+#include "loopback_input_session.hpp"
 #include "shared_resources.hpp"
 
 #include <VideoMasterCppApi/board/board.hpp>
@@ -37,7 +37,7 @@ namespace Deltacast::VideoMonitor::Session
 {
     SdiInputSession::SdiInputSession(const SdiInputSessionConfiguration&       config,
                                      Deltacast::VideoMonitor::SharedResources& shared_resources)
-        : SdiDvInputSession(config, shared_resources)
+        : LoopbackInputSession(config, shared_resources)
     {
     }
 

@@ -103,7 +103,8 @@ namespace Deltacast::VideoMonitor::Session
             return mode == IpNetworkMode::Dhcp ? "DHCP" : "static";
         }
 
-        auto wait_for_dhcp_ip(Deltacast::Wrapper::BoardComponents::IpComponents::Port& port) -> void
+        auto wait_for_dhcp_ip(Deltacast::Wrapper::Board&                               board,
+                              Deltacast::Wrapper::BoardComponents::IpComponents::Port& port) -> void
         {
             const auto deadline = std::chrono::steady_clock::now() +
                                   std::chrono::seconds(dhcp_timeout_seconds);
@@ -127,13 +128,12 @@ namespace Deltacast::VideoMonitor::Session
             spdlog::debug("DHCP assigned subnet mask: {}",
                           ipaddress::ipv4_address::from_uint(port.subnet_mask()).to_string());
             spdlog::debug("DHCP assigned gateway: {}",
-                          ipaddress::ipv4_address::from_uint(port.gateway()).to_string());
+                          ipaddress::ipv4_address::from_uint(board.ip().gateway()).to_string());
         };
 
         auto configure_ip_port(Deltacast::Wrapper::Board& board, uint32_t port_index,
                                IpNetworkMode mode, const ipaddress::ipv4_address& ip_address_v4,
                                const ipaddress::ipv4_address& subnet_mask_v4,
-                               const ipaddress::ipv4_address& gateway_v4,
                                const char*                    unsupported_dhcp_message) -> void
         {
             auto& port = board.ip().port(port_index);
@@ -157,7 +157,7 @@ namespace Deltacast::VideoMonitor::Session
                 }
 
                 port.dhcp().enable();
-                wait_for_dhcp_ip(port);
+                wait_for_dhcp_ip(board, port);
                 spdlog::trace("IP port {} DHCP configuration applied", port_index);
                 return;
             }
@@ -169,16 +169,12 @@ namespace Deltacast::VideoMonitor::Session
 
             port.set_ip_address(ip_address_v4.to_uint());
             port.set_subnet_mask(subnet_mask_v4.to_uint());
-            port.set_gateway(gateway_v4.to_uint());
-            spdlog::trace("IP port {} configured with IP address {}, subnet mask {}, gateway {}",
-                          port_index,
+            spdlog::trace("IP port {} configured with IP address {}, subnet mask {}", port_index,
                           ipaddress::ipv4_address::from_uint(port.ip_address()).to_string(),
-                          ipaddress::ipv4_address::from_uint(port.subnet_mask()).to_string(),
-                          ipaddress::ipv4_address::from_uint(port.gateway()).to_string());
+                          ipaddress::ipv4_address::from_uint(port.subnet_mask()).to_string());
 
-            spdlog::debug("Configured IP port {} with address {}, subnet {}, gateway {}",
-                          port_index, ip_address_v4.to_string(), subnet_mask_v4.to_string(),
-                          gateway_v4.to_string());
+            spdlog::debug("Configured IP port {} with address {}, subnet {}", port_index,
+                          ip_address_v4.to_string(), subnet_mask_v4.to_string());
         };
 
         auto set_stream_address(
@@ -475,7 +471,6 @@ namespace Deltacast::VideoMonitor::Session
         configure_ip_port(this->board(), main_port_index, m_network_configuration.mode,
                           m_network_configuration.ip_address_v4,
                           m_network_configuration.subnet_mask_v4,
-                          m_network_configuration.gateway_v4,
                           "DHCP mode requested but DHCP is not supported on this IP port");
 
         if (m_use_sps_stream)
@@ -484,8 +479,15 @@ namespace Deltacast::VideoMonitor::Session
             configure_ip_port(
                 this->board(), sps_port_index, m_network_configuration.sps_mode,
                 m_network_configuration.sps_ip_address_v4,
-                m_network_configuration.sps_subnet_mask_v4, m_network_configuration.sps_gateway_v4,
+                m_network_configuration.sps_subnet_mask_v4,
                 "DHCP mode requested for SPS but DHCP is not supported on SPS IP port");
+        }
+
+        if (m_network_configuration.mode != IpNetworkMode::Dhcp)
+        {
+            this->board().ip().set_gateway(m_network_configuration.gateway_v4.to_uint());
+            spdlog::trace("Configured IP gateway address {}",
+                          m_network_configuration.gateway_v4.to_string());
         }
 
         join_multicast_group(m_main_media.DestinationIP, main_port_index);
@@ -570,7 +572,8 @@ namespace Deltacast::VideoMonitor::Session
         -> Deltacast::Wrapper::Helper::VideoCharacteristics
     {
         return { m_video_characteristics.width, m_video_characteristics.height,
-                 m_video_characteristics.interlaced, m_video_characteristics.framerate };
+                 m_video_characteristics.interlaced,
+                 static_cast<ULONG>(m_video_characteristics.framerate) };
     }
 
 }  // namespace Deltacast::VideoMonitor::Session
