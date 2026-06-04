@@ -37,6 +37,37 @@
 
 namespace Deltacast::VideoMonitor::Session
 {
+    enum class IpSourceFilterMode
+    {
+        Include,
+        Exclude
+    };
+
+    struct IpSourceFilterConfiguration
+    {
+        IpSourceFilterMode                 mode = IpSourceFilterMode::Include;
+        std::vector<ipaddress::ip_address> source_ip_addresses;
+    };
+
+    struct IpMediaDescriptionConfiguration
+    {
+        std::optional<ipaddress::ip_address>       destination_ip_address;
+        std::optional<uint16_t>                    udp_port;
+        std::optional<uint16_t>                    payload_type;
+        uint32_t                                   video_width = 0;
+        uint32_t                                   video_height = 0;
+        uint32_t                                   framerate_numerator = 0;
+        uint32_t                                   framerate_denominator = 1;
+        std::optional<ipaddress::ip_address>       source_ip_address;
+        std::optional<IpSourceFilterConfiguration> source_filter;
+    };
+
+    struct IpInputMediaConfiguration
+    {
+        IpMediaDescriptionConfiguration                main_media;
+        std::optional<IpMediaDescriptionConfiguration> sps_media;
+    };
+
     enum class IpNetworkMode
     {
         Dhcp,
@@ -61,8 +92,9 @@ namespace Deltacast::VideoMonitor::Session
 
     struct IpInputSessionConfig : InputSessionConfig
     {
-        std::filesystem::path                 sdp_file_path;
-        std::optional<IpNetworkConfiguration> network_configuration;
+        std::optional<std::filesystem::path>     sdp_file_path;
+        std::optional<IpNetworkConfiguration>    network_configuration;
+        std::optional<IpInputMediaConfiguration> media_configuration;
     };
 
     class IpInputSession : public InputSession<Deltacast::Wrapper::Ip2110Stream>
@@ -88,6 +120,7 @@ namespace Deltacast::VideoMonitor::Session
         void join_multicast_group(const VHD_SDP_IP_ADDRESS& ip_address_struct, uint32_t port_index);
 
         std::optional<IpNetworkConfiguration>                               m_network_configuration;
+        std::optional<IpInputMediaConfiguration>                            m_media_configuration;
         VHD_SDP_SESSION                                                     m_session;
         VHD_SDP_MEDIA                                                       m_main_media;
         VHD_SDP_MEDIA                                                       m_sps_media;

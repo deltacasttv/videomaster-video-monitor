@@ -31,14 +31,17 @@
 #if defined(__APPLE__)
 #include <VideoMasterHD/VideoMasterHD_Core.h>
 #include <VideoMasterHD/VideoMasterHD_Ip_Board.h>
+#include <VideoMasterHD/VideoMasterHD_Ip_ST2110_20.h>
 #include <VideoMasterHD/VideoMasterHD_Ip_ST2110_Board.h>
 #include <VideoMasterHD/VideoMasterHD_SDP.h>
 #else
 #include <VideoMasterHD_Core.h>
 #include <VideoMasterHD_Ip_Board.h>
+#include <VideoMasterHD_Ip_ST2110_20.h>
 #include <VideoMasterHD_Ip_ST2110_Board.h>
 #include <VideoMasterHD_SDP.h>
 #endif
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cstdint>
@@ -53,11 +56,13 @@
 #include <ipaddress/ipv4-address.hpp>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <thread>
 #include <utility>
 #include <vector>
+
 
 namespace Deltacast::VideoMonitor::Session
 {
@@ -87,6 +92,142 @@ namespace Deltacast::VideoMonitor::Session
             }
 
             throw Exceptions::ConfigurationException("Unsupported IP version in SDP");
+        }
+
+        auto to_sdp_ip_address(const std::optional<ipaddress::ip_address>& ip_address)
+            -> VHD_SDP_IP_ADDRESS
+        {
+            VHD_SDP_IP_ADDRESS result{};
+            if (!ip_address.has_value())
+            {
+                result.Version = VHD_SDP_IP_VERSION_4;
+                result.AddressV4 = 0;
+                return result;
+            }
+
+            if (ip_address->is_v4())
+            {
+                result.Version = VHD_SDP_IP_VERSION_4;
+                result.AddressV4 = ip_address->to_uint32();
+                return result;
+            }
+
+            if (ip_address->is_v6())
+            {
+                result.Version = VHD_SDP_IP_VERSION_6;
+                const auto bytes = ip_address->v6().value().bytes();
+                std::memcpy(result.AddressV6, bytes.data(), bytes.size());
+                return result;
+            }
+
+            throw Exceptions::ConfigurationException(
+                "Unsupported IP version for media configuration");
+        }
+
+        auto find_video_standard(const IpMediaDescriptionConfiguration& media_configuration)
+            -> VHD_ST2110_20_VIDEO_STANDARD
+        {
+            std::vector<std::pair<VHD_ST2110_20_VIDEO_STANDARD, bool>> candidates;
+            for (int i = 0; i < static_cast<int>(NB_VHD_ST2110_20_VIDEO_STANDARD); ++i)
+            {
+                const auto standard = static_cast<VHD_ST2110_20_VIDEO_STANDARD>(i);
+                ULONG      width = 0;
+                ULONG      height = 0;
+                BOOL32     interlaced = FALSE;
+                ULONG      framerate = 0;
+                BOOL32     is_us = FALSE;
+
+                const auto status = VHD_ST2110_20_GetVideoCharacteristics(standard, &width, &height,
+                                                                          &interlaced, &framerate,
+                                                                          &is_us);
+                if (status != VHDERR_NOERROR)
+                {
+                    continue;
+                }
+
+                if (width != media_configuration.video_width ||
+                    height != media_configuration.video_height)
+                {
+                    continue;
+                }
+
+                const auto denominator = is_us ? 1001ULL : 1000ULL;
+                if (static_cast<uint64_t>(media_configuration.framerate_numerator) * denominator !=
+                    static_cast<uint64_t>(media_configuration.framerate_denominator) *
+                        static_cast<uint64_t>(framerate))
+                {
+                    continue;
+                }
+
+                candidates.emplace_back(standard, static_cast<bool>(interlaced));
+            }
+
+            if (candidates.empty())
+            {
+                throw Exceptions::ConfigurationException(
+                    fmt::format("No ST2110-20 video standard matches {}x{} at {}/{} fps",
+                                media_configuration.video_width, media_configuration.video_height,
+                                media_configuration.framerate_numerator,
+                                media_configuration.framerate_denominator));
+            }
+
+            const auto progressive = std::find_if(candidates.begin(), candidates.end(),
+                                                  [](const auto& candidate)
+                                                  { return !candidate.second; });
+            if (progressive != candidates.end())
+            {
+                return progressive->first;
+            }
+
+            return candidates.front().first;
+        }
+
+        auto build_sdp_media_from_configuration(
+            const IpMediaDescriptionConfiguration& media_configuration,
+            const std::string&                     media_name) -> VHD_SDP_MEDIA
+        {
+            VHD_SDP_MEDIA media{};
+            media.MediaType = VHD_SDP_MEDIA_TYPE_ST2110_20;
+            media.DestinationIP = to_sdp_ip_address(media_configuration.destination_ip_address);
+            media.UdpPort = media_configuration.udp_port.value_or(0);
+            media.PayloadType = media_configuration.payload_type.value_or(96);
+            media.ST2110_20.VideoStandard = find_video_standard(media_configuration);
+            media.ST2110_20.Sampling = VHD_ST2110_20_SAMPLING_YUV_422;
+            media.ST2110_20.Depth = VHD_ST2110_20_DEPTH_8BIT;
+
+            if (media_configuration.source_filter.has_value())
+            {
+                media.SourceFilter.UseSourceFilter = TRUE;
+                media.SourceFilter.DestinationIP = media.DestinationIP;
+                media.SourceFilter.FilterMode = media_configuration.source_filter->mode ==
+                                                        IpSourceFilterMode::Include
+                                                    ? VHD_SDP_FILTER_MODE_INCL
+                                                    : VHD_SDP_FILTER_MODE_EXCL;
+
+                const auto source_count_capacity = static_cast<size_t>(
+                    std::size(media.SourceFilter.SourceIPArray));
+                if (media_configuration.source_filter->source_ip_addresses.size() >
+                    source_count_capacity)
+                {
+                    throw Exceptions::ConfigurationException(
+                        fmt::format("Too many {} source filter IP addresses: {} (max {})",
+                                    media_name,
+                                    media_configuration.source_filter->source_ip_addresses.size(),
+                                    source_count_capacity));
+                }
+
+                media.SourceFilter.SourceIPCount = static_cast<ULONG>(
+                    media_configuration.source_filter->source_ip_addresses.size());
+
+                for (ULONG i = 0; i < media.SourceFilter.SourceIPCount; ++i)
+                {
+                    media.SourceFilter.SourceIPArray[i] = to_sdp_ip_address(
+                        std::optional<ipaddress::ip_address>(
+                            media_configuration.source_filter->source_ip_addresses[i]));
+                }
+            }
+
+            return media;
         }
 
         auto to_ipv6_bytes(const ipaddress::ip_address& addr)
@@ -317,44 +458,58 @@ namespace Deltacast::VideoMonitor::Session
                               const VHD_SDP_MEDIA&         media_description,
                               const ipaddress::ip_address& ip_address) -> void
         {
-            set_destination_address(stream, ip_address);
-            const auto applied_destination_ip_address = stream_address_to_string(stream, ip_address,
-                                                                                 true);
-            spdlog::trace("Configured destination IP address for stream: requested={}, applied={}",
-                          ip_address.to_string(), applied_destination_ip_address);
-
-            if (ip_address.is_multicast() && port.has_multicast())
+            const bool has_destination = !ip_address.is_unspecified();
+            if (has_destination)
             {
-                configure_multicast_filtering(stream, port, media_description);
-            }
-            else if (ip_address.is_multicast())
-            {
-                throw Exceptions::ConfigurationException(
-                    fmt::format("IP address {} in SDP is multicast but port does not support "
-                                "multicast reception",
-                                ip_address.to_string()));
-            }
-            else
-            {
-                spdlog::trace("Configuring unicast source IP address for destination {}",
-                              ip_address.to_string());
-                const auto source_ip_address = parse_sdp_ip_address(session.SourceIP);
-                spdlog::trace("Parsed source IP address {} from SDP session",
-                              source_ip_address.to_string());
-                set_source_address(stream, source_ip_address);
-                const auto applied_source_ip_address = stream_address_to_string(stream,
-                                                                                source_ip_address,
-                                                                                false);
+                set_destination_address(stream, ip_address);
+                const auto applied_destination_ip_address = stream_address_to_string(stream,
+                                                                                     ip_address,
+                                                                                     true);
                 spdlog::trace(
-                    "Configured unicast source IP address for destination {}: requested={}, "
-                    "applied={}",
-                    ip_address.to_string(), source_ip_address.to_string(),
-                    applied_source_ip_address);
+                    "Configured destination IP address for stream: requested={}, applied={}",
+                    ip_address.to_string(), applied_destination_ip_address);
+
+                if (ip_address.is_multicast() && port.has_multicast())
+                {
+                    configure_multicast_filtering(stream, port, media_description);
+                }
+                else if (ip_address.is_multicast())
+                {
+                    throw Exceptions::ConfigurationException(
+                        fmt::format("IP address {} in SDP is multicast but port does not support "
+                                    "multicast reception",
+                                    ip_address.to_string()));
+                }
+                else
+                {
+                    spdlog::trace("Configuring unicast source IP address for destination {}",
+                                  ip_address.to_string());
+                    const auto source_ip_address = parse_sdp_ip_address(session.SourceIP);
+                    spdlog::trace("Parsed source IP address {} from SDP session",
+                                  source_ip_address.to_string());
+                    set_source_address(stream, source_ip_address);
+                    const auto applied_source_ip_address =
+                        stream_address_to_string(stream, source_ip_address, false);
+                    spdlog::trace(
+                        "Configured unicast source IP address for destination {}: requested={}, "
+                        "applied={}",
+                        ip_address.to_string(), source_ip_address.to_string(),
+                        applied_source_ip_address);
+                }
             }
 
-            stream.set_filtering_mask(VHD_IP_FILTER_RTP_PAYLOAD_TYPE | VHD_IP_FILTER_UDP_PORT_DEST |
-                                      VHD_IP_FILTER_IP_ADDR_DEST);
-            stream.set_destination_port(media_description.UdpPort);
+            ULONG filtering_mask = VHD_IP_FILTER_RTP_PAYLOAD_TYPE;
+            if (media_description.UdpPort != 0)
+            {
+                filtering_mask |= VHD_IP_FILTER_UDP_PORT_DEST;
+                stream.set_destination_port(media_description.UdpPort);
+            }
+            if (has_destination)
+            {
+                filtering_mask |= VHD_IP_FILTER_IP_ADDR_DEST;
+            }
+
+            stream.set_filtering_mask(filtering_mask);
             stream.set_rtp_payload_type(media_description.PayloadType);
         }
 
@@ -363,17 +518,42 @@ namespace Deltacast::VideoMonitor::Session
     IpInputSession::IpInputSession(const IpInputSessionConfig&               config,
                                    Deltacast::VideoMonitor::SharedResources& shared_resources)
         : InputSession<Deltacast::Wrapper::Ip2110Stream>(config, shared_resources),
-          m_network_configuration(config.network_configuration)
+          m_network_configuration(config.network_configuration),
+          m_media_configuration(config.media_configuration)
     {
-        spdlog::trace("Loading SDP file '{}' for IP RX{}", config.sdp_file_path.string(),
+        if (m_media_configuration.has_value())
+        {
+            spdlog::trace("Using explicit IP media configuration for RX{}", config.stream_id);
+            this->m_main_media =
+                build_sdp_media_from_configuration(m_media_configuration->main_media, "main");
+            m_use_sps_stream = m_media_configuration->sps_media.has_value();
+            if (m_use_sps_stream)
+            {
+                this->m_sps_media = build_sdp_media_from_configuration(
+                    m_media_configuration->sps_media.value(), "SPS");
+            }
+
+            const auto source_ip_address = m_media_configuration->main_media.source_ip_address;
+            this->m_session.SourceIP = to_sdp_ip_address(source_ip_address);
+            return;
+        }
+
+        if (!config.sdp_file_path.has_value())
+        {
+            throw Exceptions::ConfigurationException(
+                "Either SDP file path or explicit media configuration must be provided for IP "
+                "input sessions");
+        }
+
+        spdlog::trace("Loading SDP file '{}' for IP RX{}", config.sdp_file_path->string(),
                       config.stream_id);
         std::string sdp_content;
         {
-            std::ifstream sdp_file(config.sdp_file_path);
+            std::ifstream sdp_file(config.sdp_file_path.value());
             if (!sdp_file.is_open())
             {
                 throw Exceptions::ConfigurationException(
-                    fmt::format("Failed to open SDP file: {}", config.sdp_file_path.string()));
+                    fmt::format("Failed to open SDP file: {}", config.sdp_file_path->string()));
             }
             sdp_content.assign((std::istreambuf_iterator<char>(sdp_file)),
                                std::istreambuf_iterator<char>());

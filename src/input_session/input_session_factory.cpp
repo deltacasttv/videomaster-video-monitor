@@ -40,7 +40,9 @@ namespace Deltacast::VideoMonitor::Session
     auto InputSessionFactory::create_input_session(
         uint32_t device_id, uint32_t stream_id, std::optional<std::filesystem::path> sdp_file_path,
         std::optional<Deltacast::VideoMonitor::Session::IpNetworkConfiguration>
-                                                  ip_network_configuration,
+            ip_network_configuration,
+        std::optional<Deltacast::VideoMonitor::Session::IpInputMediaConfiguration>
+                                                  ip_media_configuration,
         Deltacast::VideoMonitor::SharedResources& shared_resources)
         -> std::unique_ptr<InputSessionBase>
     {
@@ -57,6 +59,16 @@ namespace Deltacast::VideoMonitor::Session
             throw Exceptions::ConfigurationException(
                 fmt::format("IP network configuration options (--ip-dhcp, --ip-address, "
                             "--ip-subnet, --ip-gateway) are only valid for IP 2110 channels, "
+                            "but detected channel type: {}",
+                            Deltacast::Wrapper::to_pretty_string(channel_type)));
+        }
+
+        if (ip_media_configuration.has_value() && channel_type != VHD_CHNTYPE_IP_2110)
+        {
+            spdlog::warn("IP media options were provided for non-IP channel type {}",
+                         Deltacast::Wrapper::to_pretty_string(channel_type));
+            throw Exceptions::ConfigurationException(
+                fmt::format("IP media configuration options are only valid for IP 2110 channels, "
                             "but detected channel type: {}",
                             Deltacast::Wrapper::to_pretty_string(channel_type)));
         }
@@ -82,12 +94,32 @@ namespace Deltacast::VideoMonitor::Session
                                                     shared_resources);
         case VHD_CHNTYPE_IP_2110:
             spdlog::debug("Creating IP 2110 input session for RX{}", stream_id);
+
+            if (sdp_file_path.has_value() && ip_media_configuration.has_value())
+            {
+                throw Exceptions::ConfigurationException(
+                    "Explicit IP media options cannot be combined with --sdp-file");
+            }
+
             if (!sdp_file_path.has_value())
             {
-                spdlog::warn("Missing SDP file path for IP 2110 input session on RX{}", stream_id);
-                throw Exceptions::ConfigurationException(
-                    "SDP file path must be provided for IP input sessions");
+                if (!ip_media_configuration.has_value())
+                {
+                    spdlog::warn("Missing SDP file path or IP media configuration for IP 2110 "
+                                 "input session on RX{}",
+                                 stream_id);
+                    throw Exceptions::ConfigurationException(
+                        "SDP file path must be provided for IP input sessions");
+                }
+
+                spdlog::info("Using explicit IP media configuration without SDP on RX{}",
+                             stream_id);
             }
+            else
+            {
+                spdlog::trace("Using SDP file '{}' for RX{}", sdp_file_path->string(), stream_id);
+            }
+
             if (!ip_network_configuration.has_value())
             {
                 spdlog::warn("Missing IP network configuration for IP 2110 input session on RX{}. "
@@ -95,11 +127,11 @@ namespace Deltacast::VideoMonitor::Session
                              stream_id);
             }
 
-            spdlog::trace("Using SDP file '{}' for RX{}", sdp_file_path->string(), stream_id);
-            return std::make_unique<IpInputSession>(
-                IpInputSessionConfig{ device_id, stream_id, sdp_file_path.value(),
-                                      ip_network_configuration },
-                shared_resources);
+            return std::make_unique<IpInputSession>(IpInputSessionConfig{ device_id, stream_id,
+                                                                          sdp_file_path,
+                                                                          ip_network_configuration,
+                                                                          ip_media_configuration },
+                                                    shared_resources);
         default:
             spdlog::warn("Unsupported RX{} channel type: {}", stream_id,
                          Deltacast::Wrapper::to_pretty_string(channel_type));

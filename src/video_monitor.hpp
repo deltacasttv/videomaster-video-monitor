@@ -21,6 +21,7 @@
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace Deltacast::VideoMonitor
 {
@@ -43,8 +44,31 @@ namespace Deltacast::VideoMonitor
         std::optional<bool>                       m_ip_sps_dhcp;
         std::optional<std::string>                m_ip_sps_address;
         std::optional<std::string>                m_ip_sps_subnet;
-        std::string                               m_log_level = "info";
-        std::filesystem::path                     m_log_directory = ".";
+
+        std::optional<std::string> m_ip_main_destination;
+        std::optional<uint16_t>    m_ip_main_udp_port;
+        std::optional<uint16_t>    m_ip_main_payload_type;
+        std::optional<uint32_t>    m_ip_main_video_width;
+        std::optional<uint32_t>    m_ip_main_video_height;
+        std::optional<uint32_t>    m_ip_main_framerate_numerator;
+        std::optional<uint32_t>    m_ip_main_framerate_denominator;
+        std::optional<std::string> m_ip_main_source_ip;
+        std::optional<std::string> m_ip_main_source_filter_mode;
+        std::vector<std::string>   m_ip_main_source_filter_sources;
+
+        std::optional<std::string> m_ip_sps_destination;
+        std::optional<uint16_t>    m_ip_sps_udp_port;
+        std::optional<uint16_t>    m_ip_sps_payload_type;
+        std::optional<uint32_t>    m_ip_sps_video_width;
+        std::optional<uint32_t>    m_ip_sps_video_height;
+        std::optional<uint32_t>    m_ip_sps_framerate_numerator;
+        std::optional<uint32_t>    m_ip_sps_framerate_denominator;
+        std::optional<std::string> m_ip_sps_source_ip;
+        std::optional<std::string> m_ip_sps_source_filter_mode;
+        std::vector<std::string>   m_ip_sps_source_filter_sources;
+
+        std::string           m_log_level = "info";
+        std::filesystem::path m_log_directory = ".";
 
         void init_cli();
         void init_log();
