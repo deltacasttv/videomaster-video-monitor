@@ -399,19 +399,12 @@ namespace Deltacast::VideoMonitor::Session
                     "type ST2110-20 for SPS");
             }
 
-            if (media.size() > 1 && !m_network_configuration.has_sps)
+            if (media.size() > 1)
             {
-                spdlog::warn("A SPS media description is present in the SDP file but SPS is not "
-                             "enabled in network "
-                             "configuration. SPS stream will be ignored.");
-            }
-            else if (m_network_configuration.has_sps && media.size() == 1)
-            {
-                spdlog::warn("SPS is enabled in network configuration but only one media "
-                             "description found in SDP. SPS stream will be ignored.");
-            }
-            else if (m_network_configuration.has_sps && media.size() > 1)
-            {
+                spdlog::info(
+                    "Parsed SDP file contains a second media description for SPS stream. Ensure "
+                    "SPS network configuration is well configured through CLI argument or by "
+                    "pre-configured network settings in order to receive the SPS stream.");
                 this->m_sps_media = media[1];
                 m_use_sps_stream = true;
             }
@@ -492,26 +485,30 @@ namespace Deltacast::VideoMonitor::Session
             }));
 
         spdlog::debug("Configuring Main port {}", main_port_index);
-        configure_ip_port(this->board(), main_port_index, m_network_configuration.mode,
-                          m_network_configuration.ip_address_v4,
-                          m_network_configuration.subnet_mask_v4,
-                          "DHCP mode requested but DHCP is not supported on this IP port");
+        if (m_network_configuration.has_value() && m_network_configuration->has_main)
+        {
+            configure_ip_port(this->board(), main_port_index, m_network_configuration->mode,
+                              m_network_configuration->ip_address_v4,
+                              m_network_configuration->subnet_mask_v4,
+                              "DHCP mode requested but DHCP is not supported on this IP port");
+        }
 
-        if (m_use_sps_stream)
+        if (m_use_sps_stream && m_network_configuration.has_value() &&
+            m_network_configuration->has_sps)
         {
             spdlog::debug("Configuring SPS port {}", sps_port_index);
             configure_ip_port(
-                this->board(), sps_port_index, m_network_configuration.sps_mode,
-                m_network_configuration.sps_ip_address_v4,
-                m_network_configuration.sps_subnet_mask_v4,
+                this->board(), sps_port_index, m_network_configuration->sps_mode,
+                m_network_configuration->sps_ip_address_v4,
+                m_network_configuration->sps_subnet_mask_v4,
                 "DHCP mode requested for SPS but DHCP is not supported on SPS IP port");
         }
 
-        if (m_network_configuration.mode != IpNetworkMode::Dhcp)
+        if (m_network_configuration.has_value() && m_network_configuration->has_gateway)
         {
-            this->board().ip().set_gateway(m_network_configuration.gateway_v4.to_uint());
+            this->board().ip().set_gateway(m_network_configuration->gateway_v4.to_uint());
             spdlog::trace("Configured IP gateway address {}",
-                          m_network_configuration.gateway_v4.to_string());
+                          m_network_configuration->gateway_v4.to_string());
         }
 
         join_multicast_group(m_main_media.DestinationIP, main_port_index);

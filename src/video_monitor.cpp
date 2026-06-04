@@ -74,61 +74,47 @@ namespace Deltacast::VideoMonitor
                                             const std::optional<std::string>& sps_subnet_mask)
             -> std::optional<Deltacast::VideoMonitor::Session::IpNetworkConfiguration>
         {
-            const bool has_static_parameter = ip_address.has_value() || subnet_mask.has_value() ||
-                                              gateway.has_value();
-            const bool has_sps_static_parameter = sps_ip_address.has_value() ||
-                                                  sps_subnet_mask.has_value() ||
-                                                  gateway.has_value();
-            const bool has_sps_parameter = sps_dhcp_requested.has_value() ||
-                                           has_sps_static_parameter;
+            const bool has_main_dhcp_parameter = dhcp_requested.value_or(false);
+            const bool has_sps_dhcp_parameter = sps_dhcp_requested.value_or(false);
+            const bool has_main_static_parameter = ip_address.has_value() &&
+                                                   subnet_mask.has_value();
+            const bool has_sps_static_parameter = sps_ip_address.has_value() &&
+                                                  sps_subnet_mask.has_value();
+            const bool has_gateway_parameter = gateway.has_value();
 
-            if (dhcp_requested.has_value() && dhcp_requested.value() && has_static_parameter)
+            const bool has_main_parameter = has_main_dhcp_parameter || has_main_static_parameter;
+            const bool has_sps_parameter = has_sps_dhcp_parameter || has_sps_static_parameter;
+
+            if (has_sps_parameter && !has_main_parameter)
             {
                 throw Deltacast::VideoMonitor::Exceptions::ConfigurationException(
-                    "Options --ip-dhcp and --ip-address/--ip-subnet/--ip-gateway are mutually "
-                    "exclusive");
+                    "SPS IP configuration requires main IP configuration");
             }
 
-            if (has_static_parameter &&
-                !(ip_address.has_value() && subnet_mask.has_value() && gateway.has_value()))
-            {
-                throw Deltacast::VideoMonitor::Exceptions::ConfigurationException(
-                    "Static IP mode requires --ip-address, --ip-subnet and --ip-gateway");
-            }
-
-            if (sps_dhcp_requested.has_value() && sps_dhcp_requested.value() &&
-                has_sps_static_parameter)
-            {
-                throw Deltacast::VideoMonitor::Exceptions::ConfigurationException(
-                    "Options --ip-sps-dhcp and --ip-sps-address/--ip-sps-subnet/--ip-sps-gateway "
-                    "are mutually exclusive");
-            }
-
-            if (has_sps_static_parameter &&
-                !(sps_ip_address.has_value() && sps_subnet_mask.has_value()))
-            {
-                throw Deltacast::VideoMonitor::Exceptions::ConfigurationException(
-                    "Static SPS IP mode requires --ip-sps-address, --ip-sps-subnet");
-            }
-
-            if (!has_static_parameter && !dhcp_requested.has_value())
+            if (!has_main_parameter && !has_sps_parameter && !has_gateway_parameter)
             {
                 return std::nullopt;
             }
 
             auto config = Deltacast::VideoMonitor::Session::IpNetworkConfiguration{};
+            config.has_main = has_main_parameter;
+            config.has_gateway = has_gateway_parameter;
             config.has_sps = has_sps_parameter;
 
-            if (has_static_parameter)
+            if (has_main_static_parameter)
             {
                 config.mode = Deltacast::VideoMonitor::Session::IpNetworkMode::Static;
-                config.gateway_v4 = parse_ipv4(gateway.value(), "--ip-gateway");
                 config.ip_address_v4 = parse_ipv4(ip_address.value(), "--ip-address");
                 config.subnet_mask_v4 = parse_ipv4(subnet_mask.value(), "--ip-subnet");
             }
-            else if (dhcp_requested.has_value() && dhcp_requested.value())
+            else if (has_main_dhcp_parameter)
             {
                 config.mode = Deltacast::VideoMonitor::Session::IpNetworkMode::Dhcp;
+            }
+
+            if (has_gateway_parameter)
+            {
+                config.gateway_v4 = parse_ipv4(gateway.value(), "--ip-gateway");
             }
 
             if (has_sps_static_parameter)
@@ -137,7 +123,7 @@ namespace Deltacast::VideoMonitor
                 config.sps_ip_address_v4 = parse_ipv4(sps_ip_address.value(), "--ip-sps-address");
                 config.sps_subnet_mask_v4 = parse_ipv4(sps_subnet_mask.value(), "--ip-sps-subnet");
             }
-            else if (sps_dhcp_requested.has_value() && sps_dhcp_requested.value())
+            else if (has_sps_dhcp_parameter)
             {
                 config.sps_mode = Deltacast::VideoMonitor::Session::IpNetworkMode::Dhcp;
             }
@@ -312,20 +298,35 @@ namespace Deltacast::VideoMonitor
             ->add_option("--sdp-file", m_sdp_file_path, "Path to save the SDP file for IP input")
             ->check(CLI::ExistingFile)
             ->capture_default_str();
-        ip_board_option_group->add_flag("--ip-dhcp", m_ip_dhcp, "Configure IP port through DHCP");
-        ip_board_option_group->add_option(
+        auto* ip_dhcp_option = ip_board_option_group->add_flag("--ip-dhcp", m_ip_dhcp,
+                                                               "Configure IP port through DHCP");
+        auto* ip_gateway_option = ip_board_option_group->add_option(
             "--ip-gateway", m_gateway,
             "Static IPv4 gateway for IP input port (primary and SPS if SPS options are used)");
-        ip_board_option_group->add_option("--ip-address", m_ip_address,
-                                          "Static IPv4 address for IP input port");
-        ip_board_option_group->add_option("--ip-subnet", m_ip_subnet,
-                                          "Static IPv4 subnet mask for IP input port");
-        ip_board_option_group->add_flag("--ip-sps-dhcp", m_ip_sps_dhcp,
-                                        "Configure SPS IP port through DHCP");
-        ip_board_option_group->add_option("--ip-sps-address", m_ip_sps_address,
-                                          "Static IPv4 address for SPS IP port");
-        ip_board_option_group->add_option("--ip-sps-subnet", m_ip_sps_subnet,
-                                          "Static IPv4 subnet mask for SPS IP port");
+        auto* ip_address_option = ip_board_option_group->add_option(
+            "--ip-address", m_ip_address, "Static IPv4 address for IP input port");
+        auto* ip_subnet_option = ip_board_option_group->add_option(
+            "--ip-subnet", m_ip_subnet, "Static IPv4 subnet mask for IP input port");
+        auto* ip_sps_dhcp_option = ip_board_option_group->add_flag(
+            "--ip-sps-dhcp", m_ip_sps_dhcp, "Configure SPS IP port through DHCP");
+        auto* ip_sps_address_option = ip_board_option_group->add_option(
+            "--ip-sps-address", m_ip_sps_address, "Static IPv4 address for SPS IP port");
+        auto* ip_sps_subnet_option = ip_board_option_group->add_option(
+            "--ip-sps-subnet", m_ip_sps_subnet, "Static IPv4 subnet mask for SPS IP port");
+
+        ip_address_option->needs(ip_subnet_option);
+        ip_subnet_option->needs(ip_address_option);
+
+        ip_sps_address_option->needs(ip_sps_subnet_option);
+        ip_sps_subnet_option->needs(ip_sps_address_option);
+
+        ip_dhcp_option->excludes(ip_address_option);
+        ip_dhcp_option->excludes(ip_subnet_option);
+        ip_dhcp_option->excludes(ip_gateway_option);
+
+        ip_sps_dhcp_option->excludes(ip_sps_address_option);
+        ip_sps_dhcp_option->excludes(ip_sps_subnet_option);
+        ip_sps_dhcp_option->excludes(ip_gateway_option);
     }
 
     void VideoMonitorApp::init_log()

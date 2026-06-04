@@ -45,9 +45,12 @@ namespace Deltacast::VideoMonitor::Session
 
     struct IpNetworkConfiguration
     {
+        bool                    has_main = false;
         IpNetworkMode           mode = IpNetworkMode::Dhcp;
         ipaddress::ipv4_address ip_address_v4;
         ipaddress::ipv4_address subnet_mask_v4;
+
+        bool                    has_gateway = false;
         ipaddress::ipv4_address gateway_v4;
 
         bool                    has_sps = false;
@@ -58,8 +61,8 @@ namespace Deltacast::VideoMonitor::Session
 
     struct IpInputSessionConfig : InputSessionConfig
     {
-        std::filesystem::path  sdp_file_path;
-        IpNetworkConfiguration network_configuration;
+        std::filesystem::path                 sdp_file_path;
+        std::optional<IpNetworkConfiguration> network_configuration;
     };
 
     class IpInputSession : public InputSession<Deltacast::Wrapper::Ip2110Stream>
@@ -84,7 +87,7 @@ namespace Deltacast::VideoMonitor::Session
      private:
         void join_multicast_group(const VHD_SDP_IP_ADDRESS& ip_address_struct, uint32_t port_index);
 
-        IpNetworkConfiguration                                              m_network_configuration;
+        std::optional<IpNetworkConfiguration>                               m_network_configuration;
         VHD_SDP_SESSION                                                     m_session;
         VHD_SDP_MEDIA                                                       m_main_media;
         VHD_SDP_MEDIA                                                       m_sps_media;

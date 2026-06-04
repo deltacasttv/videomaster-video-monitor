@@ -90,16 +90,15 @@ namespace Deltacast::VideoMonitor::Session
             }
             if (!ip_network_configuration.has_value())
             {
-                spdlog::warn("Missing IP network configuration for IP 2110 input session on RX{}",
+                spdlog::warn("Missing IP network configuration for IP 2110 input session on RX{}. "
+                             "Pre-configured network settings will be used.",
                              stream_id);
-                throw Exceptions::ConfigurationException(
-                    "IP network configuration must be provided for IP input sessions");
             }
 
             spdlog::trace("Using SDP file '{}' for RX{}", sdp_file_path->string(), stream_id);
             return std::make_unique<IpInputSession>(
                 IpInputSessionConfig{ device_id, stream_id, sdp_file_path.value(),
-                                      ip_network_configuration.value() },
+                                      ip_network_configuration },
                 shared_resources);
         default:
             spdlog::warn("Unsupported RX{} channel type: {}", stream_id,
