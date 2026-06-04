@@ -109,7 +109,9 @@ namespace Deltacast::VideoMonitor::Session
                                  "input session on RX{}",
                                  stream_id);
                     throw Exceptions::ConfigurationException(
-                        "SDP file path must be provided for IP input sessions");
+                        "Either SDP file path or IP media configuration must be provided for IP "
+                        "input "
+                        "sessions");
                 }
 
                 spdlog::info("Using explicit IP media configuration without SDP on RX{}",

@@ -63,7 +63,6 @@
 #include <utility>
 #include <vector>
 
-
 namespace Deltacast::VideoMonitor::Session
 {
     namespace
@@ -137,17 +136,32 @@ namespace Deltacast::VideoMonitor::Session
                 ULONG      framerate = 0;
                 BOOL32     is_us = FALSE;
 
+                spdlog::trace("Checking ST2110-20 video standard {} for compatibility with {}x{} "
+                              "at {}/{} fps",
+                              Deltacast::Wrapper::to_pretty_string(standard),
+                              media_configuration.video_width, media_configuration.video_height,
+                              media_configuration.framerate_numerator,
+                              media_configuration.framerate_denominator);
+
                 const auto status = VHD_ST2110_20_GetVideoCharacteristics(standard, &width, &height,
                                                                           &interlaced, &framerate,
                                                                           &is_us);
                 if (status != VHDERR_NOERROR)
                 {
+                    spdlog::trace(
+                        "Failed to get characteristics for ST2110-20 video standard {}: {}",
+                        Deltacast::Wrapper::to_pretty_string(standard),
+                        Deltacast::Wrapper::to_pretty_string(status));
                     continue;
                 }
 
                 if (width != media_configuration.video_width ||
                     height != media_configuration.video_height)
                 {
+                    spdlog::trace(
+                        "ST2110-20 video standard {} does not match resolution: {}x{} vs {}x{}",
+                        Deltacast::Wrapper::to_pretty_string(standard), width, height,
+                        media_configuration.video_width, media_configuration.video_height);
                     continue;
                 }
 
@@ -156,9 +170,16 @@ namespace Deltacast::VideoMonitor::Session
                     static_cast<uint64_t>(media_configuration.framerate_denominator) *
                         static_cast<uint64_t>(framerate))
                 {
+                    spdlog::trace(
+                        "ST2110-20 video standard {} does not match framerate: {}/{} vs {}/{}",
+                        Deltacast::Wrapper::to_pretty_string(standard),
+                        media_configuration.framerate_numerator,
+                        media_configuration.framerate_denominator, framerate, denominator);
                     continue;
                 }
 
+                spdlog::trace("ST2110-20 video standard {} is a candidate with interlaced={}",
+                              Deltacast::Wrapper::to_pretty_string(standard), interlaced);
                 candidates.emplace_back(standard, static_cast<bool>(interlaced));
             }
 
