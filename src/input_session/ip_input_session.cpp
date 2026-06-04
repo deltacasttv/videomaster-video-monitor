@@ -40,6 +40,7 @@
 #include <VideoMasterHD_Ip_ST2110_20.h>
 #include <VideoMasterHD_Ip_ST2110_Board.h>
 #include <VideoMasterHD_SDP.h>
+#include <VideoMasterHD_String.h>
 #endif
 #include <algorithm>
 #include <array>
@@ -138,7 +139,8 @@ namespace Deltacast::VideoMonitor::Session
 
                 spdlog::trace("Checking ST2110-20 video standard {} for compatibility with {}x{} "
                               "at {}/{} fps",
-                              Deltacast::Wrapper::to_pretty_string(standard),
+                              Deltacast::Wrapper::to_pretty_string(
+                                  static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)),
                               media_configuration.video_width, media_configuration.video_height,
                               media_configuration.framerate_numerator,
                               media_configuration.framerate_denominator);
@@ -150,8 +152,9 @@ namespace Deltacast::VideoMonitor::Session
                 {
                     spdlog::trace(
                         "Failed to get characteristics for ST2110-20 video standard {}: {}",
-                        Deltacast::Wrapper::to_pretty_string(standard),
-                        Deltacast::Wrapper::to_pretty_string(status));
+                        Deltacast::Wrapper::to_pretty_string(
+                            static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)),
+                        std::to_string(static_cast<unsigned long>(status)));
                     continue;
                 }
 
@@ -160,8 +163,10 @@ namespace Deltacast::VideoMonitor::Session
                 {
                     spdlog::trace(
                         "ST2110-20 video standard {} does not match resolution: {}x{} vs {}x{}",
-                        Deltacast::Wrapper::to_pretty_string(standard), width, height,
-                        media_configuration.video_width, media_configuration.video_height);
+                        Deltacast::Wrapper::to_pretty_string(
+                            static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)),
+                        width, height, media_configuration.video_width,
+                        media_configuration.video_height);
                     continue;
                 }
 
@@ -172,14 +177,17 @@ namespace Deltacast::VideoMonitor::Session
                 {
                     spdlog::trace(
                         "ST2110-20 video standard {} does not match framerate: {}/{} vs {}/{}",
-                        Deltacast::Wrapper::to_pretty_string(standard),
+                        Deltacast::Wrapper::to_pretty_string(
+                            static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)),
                         media_configuration.framerate_numerator,
                         media_configuration.framerate_denominator, framerate, denominator);
                     continue;
                 }
 
                 spdlog::trace("ST2110-20 video standard {} is a candidate with interlaced={}",
-                              Deltacast::Wrapper::to_pretty_string(standard), interlaced);
+                              Deltacast::Wrapper::to_pretty_string(
+                                  static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)),
+                              interlaced);
                 candidates.emplace_back(standard, static_cast<bool>(interlaced));
             }
 
