@@ -33,8 +33,8 @@ namespace Deltacast::VideoMonitor::Session
         create_input_session(uint32_t device_id, uint32_t stream_id,
                              std::optional<std::filesystem::path> sdp_file_path,
                              std::optional<Deltacast::VideoMonitor::Session::IpNetworkConfiguration>
-                                                                       ip_network_configuration,
-                             std::optional<Deltacast::VideoMonitor::Session::IpInputMediaConfiguration>
+                                 ip_network_configuration,
+                             std::optional<Deltacast::VideoMonitor::Session::IpInputConfiguration>
                                                                        ip_media_configuration,
                              Deltacast::VideoMonitor::SharedResources& shared_resources)
             -> std::unique_ptr<Deltacast::VideoMonitor::Session::InputSessionBase>;

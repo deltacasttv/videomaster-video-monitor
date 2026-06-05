@@ -20,6 +20,7 @@
 
 #include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterCppApi/board/ip/port/port.hpp>
+#include <VideoMasterCppApi/exception.hpp>
 #include <VideoMasterCppApi/helper/ip.hpp>
 #include <VideoMasterCppApi/helper/sdp.hpp>
 #include <VideoMasterCppApi/helper/video.hpp>
@@ -28,6 +29,7 @@
 #include <VideoMasterCppApi/stream/ip/st2110_stream.hpp>
 #include <VideoMasterCppApi/stream/ip/video.hpp>
 #include <VideoMasterCppApi/to_string.hpp>
+
 #if defined(__APPLE__)
 #include <VideoMasterHD/VideoMasterHD_Core.h>
 #include <VideoMasterHD/VideoMasterHD_Ip_Board.h>
@@ -41,9 +43,10 @@
 #include <VideoMasterHD_Ip_ST2110_Board.h>
 #include <VideoMasterHD_SDP.h>
 #endif
-#include <algorithm>
+
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
@@ -73,6 +76,7 @@ namespace Deltacast::VideoMonitor::Session
         constexpr uint32_t main_port_index = 0;
         constexpr uint32_t sps_port_index = 1;
         constexpr uint32_t ipv6_byte_count = 16;
+        constexpr uint16_t default_dynamic_rtp_payload_type = 96;
 
         auto parse_sdp_ip_address(const VHD_SDP_IP_ADDRESS& ip_address_struct)
             -> ipaddress::ip_address
@@ -184,7 +188,7 @@ namespace Deltacast::VideoMonitor::Session
                 const auto characteristics_framerate = static_cast<uint64_t>(
                     std::floor(characteristics.framerate));
                 if (characteristics_framerate !=
-                    framerate)  // Allow fractional framerates to match if their integer part
+                    framerate)  // Allow fractional framerate to match if their integer part
                                 // matches the requested framerate
                 {
                     spdlog::trace("ST2110-20 video standard {} does not match framerate: {}/{} "
@@ -225,48 +229,69 @@ namespace Deltacast::VideoMonitor::Session
             return candidates.front();
         }
 
+        // NOLINTBEGIN(readability-magic-numbers)
+        auto find_bit_depth(uint32_t bit_depth) -> VHD_ST2110_20_DEPTH
+        {
+            switch (bit_depth)
+            {
+            case 8:
+                return VHD_ST2110_20_DEPTH_8BIT;
+            case 10:
+                return VHD_ST2110_20_DEPTH_10BIT;
+            default:
+                throw Exceptions::ConfigurationException(
+                    fmt::format("Unsupported bit depth: {}", bit_depth));
+            }
+        }
+        // NOLINTEND(readability-magic-numbers)
+
         auto build_sdp_media_from_configuration(
-            const IpMediaDescriptionConfiguration& media_configuration,
-            const std::string&                     media_name) -> VHD_SDP_MEDIA
+            const IpDestinationConfiguration&              destination_config,
+            const std::optional<IpFilteringConfiguration>& filtering_config,
+            const IpMediaDescriptionConfiguration&         media_configuration,
+            const std::string&                             media_name) -> VHD_SDP_MEDIA
         {
             VHD_SDP_MEDIA media{};
             media.MediaType = VHD_SDP_MEDIA_TYPE_ST2110_20;
-            media.DestinationIP = to_sdp_ip_address(media_configuration.destination_ip_address);
-            media.UdpPort = media_configuration.udp_port.value_or(0);
-            media.PayloadType = media_configuration.payload_type.value_or(96);
+            media.DestinationIP = to_sdp_ip_address(destination_config.destination_ip_address);
+            media.UdpPort = destination_config.udp_port.value_or(0);
+            media.PayloadType = filtering_config.has_value() &&
+                                        filtering_config->payload_type.has_value()
+                                    ? filtering_config->payload_type.value()
+                                    : default_dynamic_rtp_payload_type;
             media.ST2110_20.VideoStandard = find_video_standard(media_configuration);
             media.ST2110_20.Sampling = VHD_ST2110_20_SAMPLING_YUV_422;
-            media.ST2110_20.Depth = VHD_ST2110_20_DEPTH_8BIT;
+            media.ST2110_20.Depth = find_bit_depth(media_configuration.bit_depth);
 
-            if (media_configuration.source_filter.has_value())
+            if (filtering_config.has_value() && filtering_config->source_filter.has_value())
             {
                 media.SourceFilter.UseSourceFilter = TRUE;
                 media.SourceFilter.DestinationIP = media.DestinationIP;
-                media.SourceFilter.FilterMode = media_configuration.source_filter->mode ==
+                media.SourceFilter.FilterMode = filtering_config->source_filter->mode ==
                                                         IpSourceFilterMode::Include
                                                     ? VHD_SDP_FILTER_MODE_INCL
                                                     : VHD_SDP_FILTER_MODE_EXCL;
 
                 const auto source_count_capacity = static_cast<size_t>(
                     std::size(media.SourceFilter.SourceIPArray));
-                if (media_configuration.source_filter->source_ip_addresses.size() >
+                if (filtering_config->source_filter->source_ip_addresses.size() >
                     source_count_capacity)
                 {
                     throw Exceptions::ConfigurationException(
                         fmt::format("Too many {} source filter IP addresses: {} (max {})",
                                     media_name,
-                                    media_configuration.source_filter->source_ip_addresses.size(),
+                                    filtering_config->source_filter->source_ip_addresses.size(),
                                     source_count_capacity));
                 }
 
                 media.SourceFilter.SourceIPCount = static_cast<ULONG>(
-                    media_configuration.source_filter->source_ip_addresses.size());
+                    filtering_config->source_filter->source_ip_addresses.size());
 
                 for (ULONG i = 0; i < media.SourceFilter.SourceIPCount; ++i)
                 {
                     media.SourceFilter.SourceIPArray[i] = to_sdp_ip_address(
                         std::optional<ipaddress::ip_address>(
-                            media_configuration.source_filter->source_ip_addresses[i]));
+                            filtering_config->source_filter->source_ip_addresses[i]));
                 }
             }
 
@@ -498,8 +523,9 @@ namespace Deltacast::VideoMonitor::Session
         configure_destination(Deltacast::Wrapper::StreamComponents::IpComponents::Essence& stream,
                               Deltacast::Wrapper::BoardComponents::IpComponents::Port&     port,
                               const VHD_SDP_SESSION&                                       session,
-                              const VHD_SDP_MEDIA&         media_description,
-                              const ipaddress::ip_address& ip_address) -> void
+                              const VHD_SDP_MEDIA&           media_description,
+                              const ipaddress::ip_address&   ip_address,
+                              const std::optional<uint16_t>& payload_type) -> void
         {
             const bool has_destination = !ip_address.is_unspecified();
             if (has_destination)
@@ -541,7 +567,12 @@ namespace Deltacast::VideoMonitor::Session
                 }
             }
 
-            ULONG filtering_mask = VHD_IP_FILTER_RTP_PAYLOAD_TYPE;
+            ULONG filtering_mask = 0;
+            if (payload_type.has_value())
+            {
+                filtering_mask |= VHD_IP_FILTER_RTP_PAYLOAD_TYPE;
+                stream.set_rtp_payload_type(payload_type.value());
+            }
             if (media_description.UdpPort != 0)
             {
                 filtering_mask |= VHD_IP_FILTER_UDP_PORT_DEST;
@@ -553,7 +584,6 @@ namespace Deltacast::VideoMonitor::Session
             }
 
             stream.set_filtering_mask(filtering_mask);
-            stream.set_rtp_payload_type(media_description.PayloadType);
         }
 
     }  // namespace
@@ -562,21 +592,27 @@ namespace Deltacast::VideoMonitor::Session
                                    Deltacast::VideoMonitor::SharedResources& shared_resources)
         : InputSession<Deltacast::Wrapper::Ip2110Stream>(config, shared_resources),
           m_network_configuration(config.network_configuration),
-          m_media_configuration(config.media_configuration)
+          m_input_configuration(config.input_configuration)
     {
-        if (m_media_configuration.has_value())
+        if (m_input_configuration.has_value())
         {
             spdlog::trace("Using explicit IP media configuration for RX{}", config.stream_id);
-            this->m_main_media =
-                build_sdp_media_from_configuration(m_media_configuration->main_media, "main");
-            m_use_sps_stream = m_media_configuration->sps_media.has_value();
-            if (m_use_sps_stream)
+            this->m_main_media = build_sdp_media_from_configuration(
+                m_input_configuration->main_destination_config,
+                m_input_configuration->main_filtering_config,
+                m_input_configuration->media_description, "main");
+
+            if (m_input_configuration->sps_destination_config.has_value())
             {
+                m_use_sps_stream = true;
                 this->m_sps_media = build_sdp_media_from_configuration(
-                    m_media_configuration->sps_media.value(), "SPS");
+                    m_input_configuration->sps_destination_config.value(),
+                    m_input_configuration->sps_filtering_config,
+                    m_input_configuration->media_description, "SPS");
             }
 
-            const auto source_ip_address = m_media_configuration->main_media.source_ip_address;
+            const auto source_ip_address =
+                m_input_configuration->main_filtering_config.source_ip_address;
             this->m_session.SourceIP = to_sdp_ip_address(source_ip_address);
             return;
         }
@@ -758,7 +794,8 @@ namespace Deltacast::VideoMonitor::Session
                      destination_ip_address.to_string(), m_main_media.UdpPort,
                      m_main_media.PayloadType);
         configure_destination(m_stream->main_stream(), board.ip().port(main_port_index), m_session,
-                              m_main_media, destination_ip_address);
+                              m_main_media, destination_ip_address,
+                              m_input_configuration->main_filtering_config.payload_type);
 
         m_stream->video().set_video_standard(m_main_media.ST2110_20.VideoStandard);
         m_stream->video().set_sampling_rate(m_main_media.ST2110_20.Sampling);
@@ -780,7 +817,10 @@ namespace Deltacast::VideoMonitor::Session
                          destination_ip_address.to_string(), m_sps_media.UdpPort,
                          m_sps_media.PayloadType);
             configure_destination(m_stream->sps_stream(), board.ip().port(sps_port_index),
-                                  m_session, m_sps_media, destination_ip_address);
+                                  m_session, m_sps_media, destination_ip_address,
+                                  m_input_configuration->sps_filtering_config.has_value()
+                                      ? m_input_configuration->sps_filtering_config->payload_type
+                                      : std::nullopt);
         }
     }
 

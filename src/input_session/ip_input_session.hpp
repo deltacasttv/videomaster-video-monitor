@@ -29,6 +29,7 @@
 #include <ipaddress/ip-any-address.hpp>
 #include <ipaddress/ipaddress.hpp>
 #include <ipaddress/ipv4-address.hpp>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -49,23 +50,35 @@ namespace Deltacast::VideoMonitor::Session
         std::vector<ipaddress::ip_address> source_ip_addresses;
     };
 
-    struct IpMediaDescriptionConfiguration
+    struct IpDestinationConfiguration
     {
-        std::optional<ipaddress::ip_address>       destination_ip_address;
-        std::optional<uint16_t>                    udp_port;
+        ipaddress::ip_address   destination_ip_address;
+        std::optional<uint16_t> udp_port;
+    };
+
+    struct IpFilteringConfiguration
+    {
         std::optional<uint16_t>                    payload_type;
-        uint32_t                                   video_width = 0;
-        uint32_t                                   video_height = 0;
-        uint32_t                                   framerate_numerator = 0;
-        uint32_t                                   framerate_denominator = 1;
         std::optional<ipaddress::ip_address>       source_ip_address;
         std::optional<IpSourceFilterConfiguration> source_filter;
     };
 
-    struct IpInputMediaConfiguration
+    struct IpMediaDescriptionConfiguration
     {
-        IpMediaDescriptionConfiguration                main_media;
-        std::optional<IpMediaDescriptionConfiguration> sps_media;
+        uint32_t video_width = 0;
+        uint32_t video_height = 0;
+        uint32_t framerate_numerator = 0;
+        uint32_t framerate_denominator = 1;
+        uint32_t bit_depth = 8;  // NOLINT(readability-magic-numbers)
+    };
+
+    struct IpInputConfiguration
+    {
+        IpDestinationConfiguration                main_destination_config;
+        IpFilteringConfiguration                  main_filtering_config;
+        std::optional<IpDestinationConfiguration> sps_destination_config;
+        std::optional<IpFilteringConfiguration>   sps_filtering_config;
+        IpMediaDescriptionConfiguration           media_description;
     };
 
     enum class IpNetworkMode
@@ -92,9 +105,9 @@ namespace Deltacast::VideoMonitor::Session
 
     struct IpInputSessionConfig : InputSessionConfig
     {
-        std::optional<std::filesystem::path>     sdp_file_path;
-        std::optional<IpNetworkConfiguration>    network_configuration;
-        std::optional<IpInputMediaConfiguration> media_configuration;
+        std::optional<std::filesystem::path>  sdp_file_path;
+        std::optional<IpNetworkConfiguration> network_configuration;
+        std::optional<IpInputConfiguration>   input_configuration;
     };
 
     class IpInputSession : public InputSession<Deltacast::Wrapper::Ip2110Stream>
@@ -120,7 +133,7 @@ namespace Deltacast::VideoMonitor::Session
         void join_multicast_group(const VHD_SDP_IP_ADDRESS& ip_address_struct, uint32_t port_index);
 
         std::optional<IpNetworkConfiguration>                               m_network_configuration;
-        std::optional<IpInputMediaConfiguration>                            m_media_configuration;
+        std::optional<IpInputConfiguration>                                 m_input_configuration;
         VHD_SDP_SESSION                                                     m_session;
         VHD_SDP_MEDIA                                                       m_main_media;
         VHD_SDP_MEDIA                                                       m_sps_media;

@@ -101,8 +101,9 @@ Main stream only:
 Main + SPS stream:
 
     ./videomaster-video-monitor --device 0 --input 0 \
-      --ip-main-video-width 1920 --ip-main-video-height 1080 \
-      --ip-main-framerate-num 60000 --ip-main-framerate-den 1001 \
+      --ip-video-width 1920 --ip-video-height 1080 \
+      --ip-bit-depth 10 \
+      --ip-framerate-num 60000 --ip-framerate-den 1001 \
       --ip-main-destination 239.10.20.30 --ip-main-udp-port 5004 \
       --ip-main-payload-type 112 \
       --ip-sps-video-width 1920 --ip-sps-video-height 1080 \
@@ -127,13 +128,15 @@ Example `args.txt`:
     0
     --input
     0
-    --ip-main-video-width
+    --ip-video-width
     1920
-    --ip-main-video-height
+    --ip-video-height
     1080
-    --ip-main-framerate-num
+    --ip-bit-depth
+    10
+    --ip-framerate-num
     60000
-    --ip-main-framerate-den
+    --ip-framerate-den
     1001
     --ip-main-destination
     239.10.20.30
