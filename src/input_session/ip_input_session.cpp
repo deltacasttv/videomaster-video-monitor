@@ -583,6 +583,7 @@ namespace Deltacast::VideoMonitor::Session
                 filtering_mask |= VHD_IP_FILTER_IP_ADDR_DEST;
             }
 
+            spdlog::debug("Set filtering mask for destination {} to {}", ip_address.to_string(), filtering_mask);
             stream.set_filtering_mask(filtering_mask);
         }
 
