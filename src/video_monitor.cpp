@@ -84,23 +84,27 @@ namespace Deltacast::VideoMonitor
             }
         }
 
-        auto has_explicit_media_option(const std::optional<std::string>& destination,
-                                       const std::optional<uint16_t>&    udp_port,
-                                       const std::optional<uint32_t>&    video_width,
-                                       const std::optional<uint32_t>&    video_height,
-                                       const std::optional<uint32_t>&    bit_depth,
-                                       const std::optional<uint32_t>&    framerate_numerator,
-                                       const std::optional<uint32_t>&    framerate_denominator,
-                                       const std::optional<std::string>& source_ip,
-                                       const std::optional<std::string>& source_filter_mode,
-                                       const std::vector<std::string>&   source_filter_sources)
+        auto has_explicit_stream_option(const std::optional<std::string>& destination,
+                                        const std::optional<uint16_t>&    udp_port,
+                                        const std::optional<uint16_t>&    payload_type,
+                                        const std::optional<std::string>& source_ip,
+                                        const std::optional<std::string>& source_filter_mode,
+                                        const std::vector<std::string>&   source_filter_sources)
             -> bool
         {
-            return destination.has_value() || udp_port.has_value() || video_width.has_value() ||
-                   video_height.has_value() || bit_depth.has_value() ||
-                   framerate_numerator.has_value() || framerate_denominator.has_value() ||
+            return destination.has_value() || udp_port.has_value() || payload_type.has_value() ||
                    source_ip.has_value() || source_filter_mode.has_value() ||
                    !source_filter_sources.empty();
+        }
+
+        auto has_any_explicit_media_core_option(
+            const std::optional<uint32_t>& video_width, const std::optional<uint32_t>& video_height,
+            const std::optional<uint32_t>& bit_depth,
+            const std::optional<uint32_t>& framerate_numerator,
+            const std::optional<uint32_t>& framerate_denominator) -> bool
+        {
+            return video_width.has_value() || video_height.has_value() || bit_depth.has_value() ||
+                   framerate_numerator.has_value() || framerate_denominator.has_value();
         }
 
         auto has_explicit_media_core(const std::optional<uint32_t>& video_width,
@@ -147,11 +151,13 @@ namespace Deltacast::VideoMonitor
             const std::optional<std::filesystem::path>& sdp_file_path,
             const std::optional<std::string>&           main_destination,
             const std::optional<uint16_t>&              main_udp_port,
+            const std::optional<uint16_t>&              main_payload_type,
             const std::optional<std::string>&           main_source_ip,
             const std::optional<std::string>&           main_source_filter_mode,
             const std::vector<std::string>&             main_source_filter_sources,
             const std::optional<std::string>&           sps_destination,
             const std::optional<uint16_t>&              sps_udp_port,
+            const std::optional<uint16_t>&              sps_payload_type,
             const std::optional<std::string>&           sps_source_ip,
             const std::optional<std::string>&           sps_source_filter_mode,
             const std::vector<std::string>&             sps_source_filter_sources,
@@ -160,16 +166,17 @@ namespace Deltacast::VideoMonitor
             const std::optional<uint32_t>& framerate_numerator,
             const std::optional<uint32_t>& framerate_denominator) -> void
         {
-            const bool has_main_explicit_option = has_explicit_media_option(
-                main_destination, main_udp_port, video_width, video_height, bit_depth,
-                framerate_numerator, framerate_denominator, main_source_ip, main_source_filter_mode,
-                main_source_filter_sources);
-            const bool has_sps_explicit_option = has_explicit_media_option(
-                sps_destination, sps_udp_port, video_width, video_height, bit_depth,
-                framerate_numerator, framerate_denominator, sps_source_ip, sps_source_filter_mode,
-                sps_source_filter_sources);
+            const bool has_main_explicit_option = has_explicit_stream_option(
+                main_destination, main_udp_port, main_payload_type, main_source_ip,
+                main_source_filter_mode, main_source_filter_sources);
+            const bool has_sps_explicit_option = has_explicit_stream_option(
+                sps_destination, sps_udp_port, sps_payload_type, sps_source_ip,
+                sps_source_filter_mode, sps_source_filter_sources);
+            const bool has_any_core_explicit_option = has_any_explicit_media_core_option(
+                video_width, video_height, bit_depth, framerate_numerator, framerate_denominator);
 
-            if (!has_main_explicit_option && !has_sps_explicit_option)
+            if (!has_main_explicit_option && !has_sps_explicit_option &&
+                !has_any_core_explicit_option)
             {
                 return;
             }
@@ -190,9 +197,8 @@ namespace Deltacast::VideoMonitor
                                          framerate_denominator))
             {
                 throw Deltacast::VideoMonitor::Exceptions::ConfigurationException(
-                    "Explicit main media mode requires --ip-main-video-width, "
-                    "--ip-main-video-height, --ip-main-bit-depth, --ip-main-framerate-num and "
-                    "--ip-main-framerate-den");
+                    "Explicit IP media mode requires --ip-video-width, --ip-video-height, "
+                    "--ip-bit-depth, --ip-framerate-num and --ip-framerate-den");
             }
 
             if (has_sps_explicit_option &&
@@ -200,9 +206,8 @@ namespace Deltacast::VideoMonitor
                                          framerate_denominator))
             {
                 throw Deltacast::VideoMonitor::Exceptions::ConfigurationException(
-                    "Explicit SPS media mode requires --ip-sps-video-width, "
-                    "--ip-sps-video-height, --ip-sps-bit-depth, --ip-sps-framerate-num and "
-                    "--ip-sps-framerate-den");
+                    "Explicit SPS media mode requires --ip-video-width, --ip-video-height, "
+                    "--ip-bit-depth, --ip-framerate-num and --ip-framerate-den");
             }
 
             if (main_destination.has_value())
@@ -346,16 +351,17 @@ namespace Deltacast::VideoMonitor
                                      const std::optional<uint32_t>&    framerate_denominator)
             -> std::optional<Deltacast::VideoMonitor::Session::IpInputConfiguration>
         {
-            const bool has_main_explicit_option = has_explicit_media_option(
-                main_destination, main_udp_port, video_width, video_height, bit_depth,
-                framerate_numerator, framerate_denominator, main_source_ip, main_source_filter_mode,
-                main_source_filter_sources);
-            const bool has_sps_explicit_option = has_explicit_media_option(
-                sps_destination, sps_udp_port, video_width, video_height, bit_depth,
-                framerate_numerator, framerate_denominator, sps_source_ip, sps_source_filter_mode,
-                sps_source_filter_sources);
+            const bool has_main_explicit_option = has_explicit_stream_option(
+                main_destination, main_udp_port, main_payload_type, main_source_ip,
+                main_source_filter_mode, main_source_filter_sources);
+            const bool has_sps_explicit_option = has_explicit_stream_option(
+                sps_destination, sps_udp_port, sps_payload_type, sps_source_ip,
+                sps_source_filter_mode, sps_source_filter_sources);
+            const bool has_any_core_explicit_option = has_any_explicit_media_core_option(
+                video_width, video_height, bit_depth, framerate_numerator, framerate_denominator);
 
-            if (!has_main_explicit_option && !has_sps_explicit_option)
+            if (!has_main_explicit_option && !has_sps_explicit_option &&
+                !has_any_core_explicit_option)
             {
                 return std::nullopt;
             }
@@ -470,12 +476,15 @@ namespace Deltacast::VideoMonitor
     {
         CLI11_PARSE(m_app, argc, argv);
 
-        validate_explicit_ip_media_options(
-            m_sdp_file_path, m_ip_main_destination, m_ip_main_udp_port, m_ip_main_source_ip,
-            m_ip_main_source_filter_mode, m_ip_main_source_filter_sources, m_ip_sps_destination,
-            m_ip_sps_udp_port, m_ip_sps_source_ip, m_ip_sps_source_filter_mode,
-            m_ip_sps_source_filter_sources, m_ip_video_width, m_ip_video_height, m_ip_bit_depth,
-            m_ip_framerate_numerator, m_ip_framerate_denominator);
+        validate_explicit_ip_media_options(m_sdp_file_path, m_ip_main_destination,
+                                           m_ip_main_udp_port, m_ip_main_payload_type,
+                                           m_ip_main_source_ip, m_ip_main_source_filter_mode,
+                                           m_ip_main_source_filter_sources, m_ip_sps_destination,
+                                           m_ip_sps_udp_port, m_ip_sps_payload_type,
+                                           m_ip_sps_source_ip, m_ip_sps_source_filter_mode,
+                                           m_ip_sps_source_filter_sources, m_ip_video_width,
+                                           m_ip_video_height, m_ip_bit_depth,
+                                           m_ip_framerate_numerator, m_ip_framerate_denominator);
 
         init_log();
 
