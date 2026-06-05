@@ -604,6 +604,11 @@ namespace Deltacast::VideoMonitor::Session
 
             if (m_input_configuration->sps_destination_config.has_value())
             {
+                spdlog::info(
+                    "Explicit configuration for SPS stream provided. Ensure SPS network "
+                    "configuration "
+                    "is well configured through CLI argument or by pre-configured network settings "
+                    "in order to receive the SPS stream.");
                 m_use_sps_stream = true;
                 this->m_sps_media = build_sdp_media_from_configuration(
                     m_input_configuration->sps_destination_config.value(),
