@@ -40,7 +40,6 @@
 #include <VideoMasterHD_Ip_ST2110_20.h>
 #include <VideoMasterHD_Ip_ST2110_Board.h>
 #include <VideoMasterHD_SDP.h>
-#include <VideoMasterHD_String.h>
 #endif
 #include <algorithm>
 #include <array>
@@ -127,15 +126,10 @@ namespace Deltacast::VideoMonitor::Session
         auto find_video_standard(const IpMediaDescriptionConfiguration& media_configuration)
             -> VHD_ST2110_20_VIDEO_STANDARD
         {
-            std::vector<std::pair<VHD_ST2110_20_VIDEO_STANDARD, bool>> candidates;
+            std::vector<VHD_ST2110_20_VIDEO_STANDARD> candidates;
             for (int i = 0; i < static_cast<int>(NB_VHD_ST2110_20_VIDEO_STANDARD); ++i)
             {
                 const auto standard = static_cast<VHD_ST2110_20_VIDEO_STANDARD>(i);
-                ULONG      width = 0;
-                ULONG      height = 0;
-                BOOL32     interlaced = FALSE;
-                ULONG      framerate = 0;
-                BOOL32     is_us = FALSE;
 
                 spdlog::trace("Checking ST2110-20 video standard {} for compatibility with {}x{} "
                               "at {}/{} fps",
@@ -145,50 +139,68 @@ namespace Deltacast::VideoMonitor::Session
                               media_configuration.framerate_numerator,
                               media_configuration.framerate_denominator);
 
-                const auto status = VHD_ST2110_20_GetVideoCharacteristics(standard, &width, &height,
-                                                                          &interlaced, &framerate,
-                                                                          &is_us);
-                if (status != VHDERR_NOERROR)
+                Deltacast::Wrapper::Helper::VideoCharacteristicsFractionalFramerate characteristics;
+
+                try
+                {
+                    characteristics =
+                        Deltacast::Wrapper::Helper::Ip::video_standard_to_characteristics(standard);
+                }
+                catch (const Deltacast::Wrapper::ApiException& ex)
                 {
                     spdlog::trace(
                         "Failed to get characteristics for ST2110-20 video standard {}: {}",
                         Deltacast::Wrapper::to_pretty_string(
                             static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)),
-                        std::to_string(static_cast<unsigned long>(status)));
+                        ex.what());
                     continue;
                 }
 
-                if (width != media_configuration.video_width ||
-                    height != media_configuration.video_height)
+                if (characteristics.width != media_configuration.video_width ||
+                    characteristics.height != media_configuration.video_height)
                 {
                     spdlog::trace(
                         "ST2110-20 video standard {} does not match resolution: {}x{} vs {}x{}",
                         Deltacast::Wrapper::to_pretty_string(
                             static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)),
-                        width, height, media_configuration.video_width,
-                        media_configuration.video_height);
+                        characteristics.width, characteristics.height,
+                        media_configuration.video_width, media_configuration.video_height);
                     continue;
                 }
 
-                const auto denominator = is_us ? 1001ULL : 1000ULL;
-                if (static_cast<uint64_t>(media_configuration.framerate_numerator) * denominator !=
-                    static_cast<uint64_t>(media_configuration.framerate_denominator) *
-                        static_cast<uint64_t>(framerate))
+                if (media_configuration.framerate_denominator < 0)
                 {
-                    spdlog::trace(
-                        "ST2110-20 video standard {} does not match framerate: {}/{} vs {}/{}",
-                        Deltacast::Wrapper::to_pretty_string(
-                            static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)),
-                        media_configuration.framerate_numerator,
-                        media_configuration.framerate_denominator, framerate, denominator);
+                    spdlog::trace("ST2110-20 video standard {} does not match negative framerate "
+                                  "denominator {}",
+                                  Deltacast::Wrapper::to_pretty_string(
+                                      static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)),
+                                  media_configuration.framerate_denominator);
                     continue;
                 }
 
-                spdlog::trace("ST2110-20 video standard {} is a candidate with interlaced={}",
+                const auto framerate = static_cast<uint64_t>(
+                    media_configuration.framerate_numerator /
+                    media_configuration.framerate_denominator);
+                const auto characteristics_framerate = static_cast<uint64_t>(
+                    std::floor(characteristics.framerate));
+                if (characteristics_framerate !=
+                    framerate)  // Allow fractional framerates to match if their integer part
+                                // matches the requested framerate
+                {
+                    spdlog::trace("ST2110-20 video standard {} does not match framerate: {}/{} "
+                                  "(rounded to {}) vs {}(rounded to {})",
+                                  Deltacast::Wrapper::to_pretty_string(
+                                      static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)),
+                                  media_configuration.framerate_numerator,
+                                  media_configuration.framerate_denominator, framerate,
+                                  characteristics.framerate, characteristics_framerate);
+                    continue;
+                }
+
+                spdlog::trace("ST2110-20 video standard {} is a candidate.",
                               Deltacast::Wrapper::to_pretty_string(
-                                  static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)),
-                              interlaced);
-                candidates.emplace_back(standard, static_cast<bool>(interlaced));
+                                  static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)));
+                candidates.emplace_back(standard);
             }
 
             if (candidates.empty())
@@ -200,15 +212,17 @@ namespace Deltacast::VideoMonitor::Session
                                 media_configuration.framerate_denominator));
             }
 
-            const auto progressive = std::find_if(candidates.begin(), candidates.end(),
-                                                  [](const auto& candidate)
-                                                  { return !candidate.second; });
-            if (progressive != candidates.end())
+            if (candidates.size() > 1)
             {
-                return progressive->first;
+                spdlog::warn(
+                    "Multiple ST2110-20 video standards match the specified characteristics. "
+                    "This should not happen and may indicate an issue with the video standard "
+                    "characteristics database. Using the first matching standard: {}",
+                    Deltacast::Wrapper::to_pretty_string(
+                        static_cast<VHD_ST2110_20_VIDEO_STANDARD>(candidates.front())));
             }
 
-            return candidates.front().first;
+            return candidates.front();
         }
 
         auto build_sdp_media_from_configuration(
