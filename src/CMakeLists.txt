@@ -13,10 +13,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # project sources
 set(${PROJECT_NAME}_SOURCES
     ${CMAKE_SOURCE_DIR}/src/main.cpp
-    ${CMAKE_SOURCE_DIR}/src/helper.cpp
-    ${CMAKE_SOURCE_DIR}/src/shared_resources.cpp
-    ${CMAKE_SOURCE_DIR}/src/windowed_renderer.cpp
-    ${CMAKE_SOURCE_DIR}/src/video_monitor.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/helper.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/shared_resources.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/windowed_renderer.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/video_monitor.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/ip_cli_configuration_builder.cpp
     ${CMAKE_SOURCE_DIR}/src/input_session/sdi_input_session.cpp
     ${CMAKE_SOURCE_DIR}/src/input_session/dv_input_session.cpp
     ${CMAKE_SOURCE_DIR}/src/input_session/ip_input_session.cpp
@@ -25,6 +26,7 @@ set(${PROJECT_NAME}_SOURCES
 
 set(${PROJECT_NAME}_INCLUDE_DIRECTORIES
     ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/core
     ${CMAKE_SOURCE_DIR}/src/input_session
 )
 

@@ -15,7 +15,6 @@
 
 #pragma once
 
-#include <cstdint>
 #include <fmt/format.h>
 #include <stdexcept>
 #include <string>
@@ -77,7 +76,6 @@ namespace Deltacast::VideoMonitor
             {
             }
         };
-
 
         class ConfigurationException : public VideoMonitorException
         {

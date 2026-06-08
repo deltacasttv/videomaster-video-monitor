@@ -19,12 +19,18 @@
 #include <CLI/CLI.hpp>
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
 namespace Deltacast::VideoMonitor
 {
+    namespace Session
+    {
+        class InputSessionBase;
+    }
+
     class VideoMonitorApp
     {
      public:
@@ -69,9 +75,13 @@ namespace Deltacast::VideoMonitor
         std::filesystem::path m_log_directory = ".";
 
         void init_cli();
+        void init_common_options();
+        void init_ip_board_options();
         void init_log();
 
         [[nodiscard]] auto check_device_id() const -> bool;
         [[nodiscard]] auto check_stream_id() const -> bool;
+        auto               run_session_loop(
+            std::unique_ptr<Deltacast::VideoMonitor::Session::InputSessionBase> session) -> int;
     };
 }  // namespace Deltacast::VideoMonitor

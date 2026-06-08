@@ -30,8 +30,14 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <exception>
+#include <fmt/format.h>
 #include <ios>
+#include <ipaddress/ip-any-address.hpp>
+#include <ipaddress/ipaddress.hpp>
+#include <ipaddress/ipv4-address.hpp>
 #include <ostream>
+#include <string>
 #include <thread>
 
 auto operator<<(std::ostream& output_stream, Deltacast::Wrapper::Board& board) -> std::ostream&
@@ -69,6 +75,35 @@ namespace Deltacast::VideoMonitor::Helper
 
         constexpr uint32_t wait_for_input_timeout_ms = 100;
     }  // namespace
+
+    auto parse_ipv4_address(const std::string& address, const std::string& option_name)
+        -> ipaddress::ipv4_address
+    {
+        try
+        {
+            return ipaddress::ipv4_address::parse(address);
+        }
+        catch (const std::exception& ex)
+        {
+            throw Deltacast::VideoMonitor::Exceptions::ConfigurationException(
+                fmt::format("Invalid IPv4 address for {}: {} ({})", option_name, address,
+                            ex.what()));
+        }
+    }
+
+    auto parse_ip_address(const std::string& address, const std::string& option_name)
+        -> ipaddress::ip_address
+    {
+        try
+        {
+            return ipaddress::ip_address::parse(address);
+        }
+        catch (const std::exception& ex)
+        {
+            throw Deltacast::VideoMonitor::Exceptions::ConfigurationException(
+                fmt::format("Invalid IP address for {}: {} ({})", option_name, address, ex.what()));
+        }
+    }
 
     auto rx_index_to_streamtype(unsigned int rx_index) -> VHD_STREAMTYPE
     {
