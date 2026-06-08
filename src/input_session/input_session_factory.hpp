@@ -16,7 +16,7 @@
 #pragma once
 
 #include "input_session_base.hpp"
-#include "ip_input_session.hpp"
+#include "ip_input_configuration.hpp"
 #include "shared_resources.hpp"
 
 #include <cstdint>

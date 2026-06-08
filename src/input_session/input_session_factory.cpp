@@ -17,9 +17,11 @@
 #include "dv_input_session.hpp"
 #include "exceptions.hpp"
 #include "input_session_base.hpp"
+#include "ip_input_configuration.hpp"
 #include "ip_input_session.hpp"
 #include "sdi_input_session.hpp"
 #include "shared_resources.hpp"
+
 
 #include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterCppApi/to_string.hpp>

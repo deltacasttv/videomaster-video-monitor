@@ -16,7 +16,7 @@
 #include "video_monitor.hpp"
 #include "exceptions.hpp"
 #include "input_session_factory.hpp"
-#include "ip_input_session.hpp"
+#include "ip_input_configuration.hpp"
 #include "shared_resources.hpp"
 #include "version.hpp"
 #include "windowed_renderer.hpp"
