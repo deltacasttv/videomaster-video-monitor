@@ -15,8 +15,6 @@
 
 #pragma once
 
-#include "exceptions.hpp"
-#include "helper.hpp"
 #include "input_session.hpp"
 #include "shared_resources.hpp"
 
@@ -28,7 +26,6 @@
 #endif
 #include <memory>
 #include <spdlog/spdlog.h>
-#include <utility>
 
 namespace Deltacast::VideoMonitor::Session
 {
