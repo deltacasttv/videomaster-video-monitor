@@ -5,7 +5,8 @@ Diagnostics:
     Add: ["readability-*", "bugprone-*", "modernize-*"]
 
 CompileFlags:
-  CompilationDatabase: build/Debug
+  CompilationDatabase: build/Release
+  # CompilationDatabase: build/Debug
   Remove:
     - -fcolor-diagnostics
     - /showIncludes

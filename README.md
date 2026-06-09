@@ -7,6 +7,7 @@ SDI, HDMI/DisplayPort and IP ST2110 channels are supported by this application.
 OS Support:
 - Windows
 - Linux
+- MacOS
 
 See https://www.deltacast.tv for more video products.
 
@@ -17,6 +18,7 @@ VideoViewer requires some dependencies to be installed on the system:
     cmake v3.20 or higher
     glfw v3.4.0
     Python 3
+    jinja2 (Python package)
 
 We recommend using Conan 2.x to retrieve those dependencies:
 

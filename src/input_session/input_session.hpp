@@ -20,7 +20,6 @@
 #include "input_session_base.hpp"
 #include "shared_resources.hpp"
 
-
 #include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterCppApi/helper/video.hpp>
 #if defined(__APPLE__)
@@ -30,7 +29,9 @@
 #endif
 #include <cstdint>
 #include <memory>
+#include <spdlog/spdlog.h>
 #include <utility>
+
 
 namespace Deltacast::VideoMonitor::Session
 {
