@@ -56,8 +56,8 @@ namespace Deltacast::VideoMonitor::Session
         virtual auto video_input_has_changed() -> bool = 0;
         virtual auto get_video_buffer() -> std::pair<UBYTE*, ULONG> = 0;
 
-        virtual auto get_video_characteristics()
-            -> Deltacast::Wrapper::Helper::VideoCharacteristics = 0;
+        virtual auto
+        get_video_characteristics() -> Deltacast::Wrapper::Helper::VideoCharacteristics = 0;
         virtual auto get_video_slots_statistics() -> std::pair<ULONG, ULONG> = 0;
 
      protected:

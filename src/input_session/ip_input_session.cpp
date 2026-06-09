@@ -79,8 +79,8 @@ namespace Deltacast::VideoMonitor::Session
         constexpr uint32_t ipv6_byte_count = 16;
         constexpr uint16_t default_dynamic_rtp_payload_type = 96;
 
-        auto parse_sdp_ip_address(const VHD_SDP_IP_ADDRESS& ip_address_struct)
-            -> ipaddress::ip_address
+        auto
+        parse_sdp_ip_address(const VHD_SDP_IP_ADDRESS& ip_address_struct) -> ipaddress::ip_address
         {
             if (ip_address_struct.Version == VHD_SDP_IP_VERSION_4)
             {
@@ -299,8 +299,8 @@ namespace Deltacast::VideoMonitor::Session
             return media;
         }
 
-        auto to_ipv6_bytes(const ipaddress::ip_address& addr)
-            -> std::array<uint8_t, ipv6_byte_count>
+        auto
+        to_ipv6_bytes(const ipaddress::ip_address& addr) -> std::array<uint8_t, ipv6_byte_count>
         {
             const auto&                          v6_bytes = addr.v6().value().bytes();
             std::array<uint8_t, ipv6_byte_count> result{};
@@ -441,8 +441,8 @@ namespace Deltacast::VideoMonitor::Session
 
         auto stream_address_to_string(
             const Deltacast::Wrapper::StreamComponents::IpComponents::Essence& stream,
-            const ipaddress::ip_address& configured_ip_address, bool destination_address)
-            -> std::string
+            const ipaddress::ip_address& configured_ip_address,
+            bool                         destination_address) -> std::string
         {
             if (configured_ip_address.is_v6())
             {
@@ -860,8 +860,8 @@ namespace Deltacast::VideoMonitor::Session
         return slot.video_essence().buffer();
     }
 
-    auto IpInputSession::get_video_characteristics()
-        -> Deltacast::Wrapper::Helper::VideoCharacteristics
+    auto
+    IpInputSession::get_video_characteristics() -> Deltacast::Wrapper::Helper::VideoCharacteristics
     {
         return { m_video_characteristics.width, m_video_characteristics.height,
                  m_video_characteristics.interlaced,

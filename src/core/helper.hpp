@@ -37,10 +37,10 @@ auto operator<<(std::ostream& output_stream, Deltacast::Wrapper::Board& board) -
 
 namespace Deltacast::VideoMonitor::Helper
 {
-    auto parse_ipv4_address(const std::string& address, const std::string& option_name)
-        -> ipaddress::ipv4_address;
-    auto parse_ip_address(const std::string& address, const std::string& option_name)
-        -> ipaddress::ip_address;
+    auto parse_ipv4_address(const std::string& address,
+                            const std::string& option_name) -> ipaddress::ipv4_address;
+    auto parse_ip_address(const std::string& address,
+                          const std::string& option_name) -> ipaddress::ip_address;
 
     auto rx_index_to_streamtype(unsigned int rx_index) -> VHD_STREAMTYPE;
     auto wait_for_input(Deltacast::Wrapper::BoardComponents::RxConnector& rx_connector,
