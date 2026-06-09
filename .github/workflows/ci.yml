@@ -39,80 +39,84 @@ jobs:
                   find "${dirs[@]}" -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
                     | xargs -0 -r clang-format --dry-run --Werror
 
-    build:
-        name: Build (${{ matrix.os }})
-        runs-on: ${{ matrix.os }}
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - os: ubuntu-latest
-                      compiler_name: gcc
-                      cc: gcc
-                      cxx: g++
-                    - os: macos-latest
-                      compiler_name: clang
-                      cc: clang
-                      cxx: clang++
-                    - os: windows-latest
-                      compiler_name: msvc
+    # Build is intentionally disabled on GitHub-hosted runners for now.
+    # This project depends on the internal VideoMasterHD SDK, which is only
+    # available on custom runners provisioned with the SDK installation.
+    # Re-enable this job once a compatible custom runner is available.
+    # build:
+    #     name: Build (${{ matrix.os }})
+    #     runs-on: ${{ matrix.os }}
+    #     strategy:
+    #         fail-fast: false
+    #         matrix:
+    #             include:
+    #                 - os: ubuntu-latest
+    #                   compiler_name: gcc
+    #                   cc: gcc
+    #                   cxx: g++
+    #                 - os: macos-latest
+    #                   compiler_name: clang
+    #                   cc: clang
+    #                   cxx: clang++
+    #                 - os: windows-latest
+    #                   compiler_name: msvc
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-              with:
-                  submodules: recursive
+    #     steps:
+    #         - name: Checkout
+    #           uses: actions/checkout@v4
+    #           with:
+    #               submodules: recursive
 
-            - name: Setup Python
-              uses: actions/setup-python@v5
-              with:
-                  python-version: "3.13"
+    #         - name: Setup Python
+    #           uses: actions/setup-python@v5
+    #           with:
+    #               python-version: "3.13"
 
-            - name: Cache Conan packages
-              uses: actions/cache@v4
-              with:
-                  path: ~/.conan2
-                  key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py', 'deps/video-viewer/conanfile.txt') }}
-                  restore-keys: |
-                      conan-${{ runner.os }}-
+    #         - name: Cache Conan packages
+    #           uses: actions/cache@v4
+    #           with:
+    #               path: ~/.conan2
+    #               key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py', 'deps/video-viewer/conanfile.txt') }}
+    #               restore-keys: |
+    #                   conan-${{ runner.os }}-
 
-            - name: Install compiler (Linux)
-              if: runner.os == 'Linux'
-              run: sudo apt-get update && sudo apt-get install -y gcc g++ ninja-build
+    #         - name: Install compiler (Linux)
+    #           if: runner.os == 'Linux'
+    #           run: sudo apt-get update && sudo apt-get install -y gcc g++ ninja-build
 
-            - name: Install compiler tools (macOS)
-              if: runner.os == 'macOS'
-              run: brew install ninja
+    #         - name: Install compiler tools (macOS)
+    #           if: runner.os == 'macOS'
+    #           run: brew install ninja
 
-            - name: Install Conan and jinja2
-              run: python -m pip install --upgrade pip conan jinja2
+    #         - name: Install Conan and jinja2
+    #           run: python -m pip install --upgrade pip conan jinja2
 
-            - name: Detect Conan profile
-              run: conan profile detect --force
+    #         - name: Detect Conan profile
+    #           run: conan profile detect --force
 
-            - name: Debug - Check submodule
-              run: |
-                  echo "Current directory: $(pwd)"
-                  echo "Listing deps/:"
-                  ls -la deps/ || echo "deps/ not found"
-                  echo "Listing deps/video-viewer/:"
-                  ls -la deps/video-viewer/ || echo "deps/video-viewer/ not found"
-                  echo "Checking conanfile.txt:"
-                  test -f deps/video-viewer/conanfile.txt && echo "✓ conanfile.txt exists" || echo "✗ conanfile.txt NOT found"
+    #         - name: Debug - Check submodule
+    #           run: |
+    #               echo "Current directory: $(pwd)"
+    #               echo "Listing deps/:"
+    #               ls -la deps/ || echo "deps/ not found"
+    #               echo "Listing deps/video-viewer/:"
+    #               ls -la deps/video-viewer/ || echo "deps/video-viewer/ not found"
+    #               echo "Checking conanfile.txt:"
+    #               test -f deps/video-viewer/conanfile.txt && echo "✓ conanfile.txt exists" || echo "✗ conanfile.txt NOT found"
 
-            - name: Conan install
-              env:
-                  CC: ${{ matrix.cc }}
-                  CXX: ${{ matrix.cxx }}
-              run: conan install . -b missing
+    #         - name: Conan install
+    #           env:
+    #               CC: ${{ matrix.cc }}
+    #               CXX: ${{ matrix.cxx }}
+    #           run: conan install . -b missing
 
-            - name: Configure CMake (Windows/MSVC)
-              if: runner.os == 'Windows'
-              run: cmake --preset conan-default
+    #         - name: Configure CMake (Windows/MSVC)
+    #           if: runner.os == 'Windows'
+    #           run: cmake --preset conan-default
 
-            - name: Configure CMake (Linux/macOS)
-              if: runner.os != 'Windows'
-              run: cmake --preset conan-release
+    #         - name: Configure CMake (Linux/macOS)
+    #           if: runner.os != 'Windows'
+    #           run: cmake --preset conan-release
 
-            - name: Build
-              run: cmake --build --preset conan-release
+    #         - name: Build
+    #           run: cmake --build --preset conan-release
