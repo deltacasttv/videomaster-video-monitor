@@ -4,8 +4,6 @@ on:
     push:
         branches:
             - main
-            - develop
-            - feature/**
     pull_request:
 
 jobs:
@@ -27,7 +25,7 @@ jobs:
               run: |
                   set -euo pipefail
                   dirs=()
-                  for d in operators applications tests src deps; do
+                  for d in operators applications tests src; do
                     if [ -d "$d" ]; then
                       dirs+=("$d")
                     fi
@@ -91,6 +89,16 @@ jobs:
 
             - name: Detect Conan profile
               run: conan profile detect --force
+
+            - name: Debug - Check submodule
+              run: |
+                  echo "Current directory: $(pwd)"
+                  echo "Listing deps/:"
+                  ls -la deps/ || echo "deps/ not found"
+                  echo "Listing deps/video-viewer/:"
+                  ls -la deps/video-viewer/ || echo "deps/video-viewer/ not found"
+                  echo "Checking conanfile.txt:"
+                  test -f deps/video-viewer/conanfile.txt && echo "✓ conanfile.txt exists" || echo "✗ conanfile.txt NOT found"
 
             - name: Conan install
               env:
