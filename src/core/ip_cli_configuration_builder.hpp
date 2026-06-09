@@ -68,7 +68,7 @@ namespace Deltacast::VideoMonitor::Core
     auto build_ip_media_configuration(const IpMediaCliOptions& options)
         -> std::optional<Deltacast::VideoMonitor::Session::IpInputConfiguration>;
 
-    void validate_explicit_ip_media_options(
-        const std::optional<std::filesystem::path>& sdp_file_path,
-        const IpMediaCliOptions&                    options);
+    void
+    validate_explicit_ip_media_options(const std::optional<std::filesystem::path>& sdp_file_path,
+                                       const IpMediaCliOptions&                    options);
 }  // namespace Deltacast::VideoMonitor::Core

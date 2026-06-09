@@ -82,6 +82,6 @@ namespace Deltacast::VideoMonitor
         [[nodiscard]] auto check_device_id() const -> bool;
         [[nodiscard]] auto check_stream_id() const -> bool;
         auto               run_session_loop(
-            std::unique_ptr<Deltacast::VideoMonitor::Session::InputSessionBase> session) -> int;
+                          std::unique_ptr<Deltacast::VideoMonitor::Session::InputSessionBase> session) -> int;
     };
 }  // namespace Deltacast::VideoMonitor

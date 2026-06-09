@@ -32,7 +32,6 @@
 #include <utility>
 #include <vector>
 
-
 #include "input_session.hpp"
 #include "ip_input_configuration.hpp"
 #include "shared_resources.hpp"

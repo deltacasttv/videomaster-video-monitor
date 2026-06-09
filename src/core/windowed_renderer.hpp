@@ -17,7 +17,6 @@
 
 #include <videoviewer/videoviewer.hpp>
 
-
 #if defined(__APPLE__)
 #include <VideoMasterHD/VideoMasterHD_Core.h>
 #else
@@ -50,7 +49,7 @@ namespace Deltacast::VideoMonitor::Renderer
         auto operator=(WindowedRenderer&&) -> WindowedRenderer& = delete;
 
         void init(int image_width, int image_height,
-              Deltacast::VideoViewer::InputFormat input_format);
+                  Deltacast::VideoViewer::InputFormat input_format);
         void render_buffer(BYTE* buffer, ULONG buffer_size);
         auto stop() -> bool;
 

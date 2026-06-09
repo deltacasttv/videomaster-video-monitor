@@ -22,7 +22,6 @@
 #include "sdi_input_session.hpp"
 #include "shared_resources.hpp"
 
-
 #include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterCppApi/to_string.hpp>
 #if defined(__APPLE__)

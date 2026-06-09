@@ -69,7 +69,6 @@ namespace Deltacast::VideoMonitor::Renderer
             }
             std::rethrow_exception(m_thread_exception);
         }
-
     }
 
     void WindowedRenderer::monitor(int image_width, int image_height,

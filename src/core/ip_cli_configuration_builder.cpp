@@ -24,7 +24,6 @@
 #include <optional>
 #include <string>
 
-
 namespace Deltacast::VideoMonitor::Core
 {
     namespace

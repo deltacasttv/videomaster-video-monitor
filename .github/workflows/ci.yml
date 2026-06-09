@@ -16,6 +16,8 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v4
+              with:
+                  submodules: recursive
 
             - name: Install clang-format
               run: sudo apt-get update && sudo apt-get install -y clang-format
@@ -60,6 +62,8 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v4
+              with:
+                  submodules: recursive
 
             - name: Setup Python
               uses: actions/setup-python@v5

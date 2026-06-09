@@ -22,7 +22,6 @@
 #include <optional>
 #include <vector>
 
-
 namespace Deltacast::VideoMonitor::Session
 {
     enum class IpSourceFilterMode

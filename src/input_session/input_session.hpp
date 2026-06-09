@@ -32,7 +32,6 @@
 #include <spdlog/spdlog.h>
 #include <utility>
 
-
 namespace Deltacast::VideoMonitor::Session
 {
     struct InputSessionConfig : InputSessionBaseConfig

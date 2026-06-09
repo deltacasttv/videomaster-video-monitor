@@ -22,7 +22,6 @@
 #include <ipaddress/ipv4-address.hpp>
 #include <string>
 
-
 #include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterCppApi/board/rx/rx.hpp>
 #include <VideoMasterCppApi/exception.hpp>

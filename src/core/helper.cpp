@@ -40,7 +40,6 @@
 #include <string>
 #include <thread>
 
-
 auto operator<<(std::ostream& output_stream, Deltacast::Wrapper::Board& board) -> std::ostream&
 {
     output_stream << "\t" << "Board " << board.index() << ":  [ " << board.name() << " ]"
