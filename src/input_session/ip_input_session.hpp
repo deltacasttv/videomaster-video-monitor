@@ -69,9 +69,9 @@ namespace Deltacast::VideoMonitor::Session
 
         std::optional<IpNetworkConfiguration>                               m_network_configuration;
         std::optional<IpInputConfiguration>                                 m_input_configuration;
-        VHD_SDP_SESSION                                                     m_session;
-        VHD_SDP_MEDIA                                                       m_main_media;
-        VHD_SDP_MEDIA                                                       m_sps_media;
+        VHD_SDP_SESSION                                                     m_session = {};
+        VHD_SDP_MEDIA                                                       m_main_media = {};
+        VHD_SDP_MEDIA                                                       m_sps_media = {};
         std::vector<std::pair<uint32_t, ipaddress::ip_address>>             m_multicast_groups;
         Deltacast::Wrapper::Helper::VideoCharacteristicsFractionalFramerate m_video_characteristics;
         bool m_use_sps_stream{ false };

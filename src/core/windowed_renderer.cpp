@@ -86,7 +86,14 @@ namespace Deltacast::VideoMonitor::Renderer
             m_monitor_ready = true;
             m_monitor.render_loop(m_framerate_ms);
             m_monitor.release();
-            m_should_stop = true;
+
+            // Only signal global stop if the window was closed by user.
+            // If render_loop ended due to m_stop being set (normal teardown),
+            // don't propagate as application-wide stop request.
+            if (m_monitor.window_request_close())
+            {
+                m_should_stop = true;
+            }
         }
         catch (const Deltacast::VideoMonitor::Exceptions::VideoMonitorException& e)
         {
@@ -130,8 +137,12 @@ namespace Deltacast::VideoMonitor::Renderer
         }
         else
         {
-            spdlog::warn("Window has been closed");
-            m_should_stop = true;
+            // Only set should_stop if the window was actually closed
+            if (m_monitor.window_request_close())
+            {
+                spdlog::warn("Window has been closed");
+                m_should_stop = true;
+            }
         }
     }
 }  // namespace Deltacast::VideoMonitor::Renderer
