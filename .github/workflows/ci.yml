@@ -37,4 +37,5 @@ jobs:
           fi
 
           find "${dirs[@]}" -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
+            ! -path 'src/version.hpp' -print0 \
             | xargs -0 -r clang-format --dry-run --Werror

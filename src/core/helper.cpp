@@ -76,8 +76,8 @@ namespace Deltacast::VideoMonitor::Helper
         constexpr uint32_t wait_for_input_timeout_ms = 100;
     }  // namespace
 
-    auto parse_ipv4_address(const std::string& address,
-                            const std::string& option_name) -> ipaddress::ipv4_address
+    auto parse_ipv4_address(const std::string& address, const std::string& option_name)
+        -> ipaddress::ipv4_address
     {
         try
         {
@@ -91,8 +91,8 @@ namespace Deltacast::VideoMonitor::Helper
         }
     }
 
-    auto parse_ip_address(const std::string& address,
-                          const std::string& option_name) -> ipaddress::ip_address
+    auto parse_ip_address(const std::string& address, const std::string& option_name)
+        -> ipaddress::ip_address
     {
         try
         {
