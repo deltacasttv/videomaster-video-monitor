@@ -87,8 +87,8 @@ namespace Deltacast::VideoMonitor::Session
         }
 
      protected:
-        std::unique_ptr<TStream> m_stream;
-          decltype(std::declval<TStream&>().pop_slot()) m_current_slot;
+        std::unique_ptr<TStream>                      m_stream;
+        decltype(std::declval<TStream&>().pop_slot()) m_current_slot;
 
         auto stream() -> TStream&
         {

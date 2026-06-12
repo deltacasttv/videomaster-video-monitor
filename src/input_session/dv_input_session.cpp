@@ -124,8 +124,8 @@ namespace Deltacast::VideoMonitor::Session
                framerate_changed || cable_color_space_changed || cable_sampling_changed;
     }
 
-    auto
-    DvInputSession::get_video_characteristics() -> Deltacast::Wrapper::Helper::VideoCharacteristics
+    auto DvInputSession::get_video_characteristics()
+        -> Deltacast::Wrapper::Helper::VideoCharacteristics
     {
         return m_signal_characteristics;
     }

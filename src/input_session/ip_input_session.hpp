@@ -58,8 +58,8 @@ namespace Deltacast::VideoMonitor::Session
         void configure_video_stream() override;
         auto video_input_has_changed() -> bool override;
         auto get_video_buffer() -> std::pair<UBYTE*, ULONG> override;
-        auto
-        get_video_characteristics() -> Deltacast::Wrapper::Helper::VideoCharacteristics override;
+        auto get_video_characteristics()
+            -> Deltacast::Wrapper::Helper::VideoCharacteristics override;
 
      protected:
         auto has_video_input_changed() -> bool override;

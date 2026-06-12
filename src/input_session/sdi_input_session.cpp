@@ -103,8 +103,8 @@ namespace Deltacast::VideoMonitor::Session
         return video_standard_changed || clock_divisor_changed || interface_changed;
     }
 
-    auto
-    SdiInputSession::get_video_characteristics() -> Deltacast::Wrapper::Helper::VideoCharacteristics
+    auto SdiInputSession::get_video_characteristics()
+        -> Deltacast::Wrapper::Helper::VideoCharacteristics
     {
         this->ensure_stream_is_prepared();
         return Deltacast::Wrapper::Helper::Sdi::video_standard_to_characteristics(m_video_standard);

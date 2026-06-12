@@ -79,8 +79,8 @@ namespace Deltacast::VideoMonitor::Session
         constexpr uint32_t ipv6_byte_count = 16;
         constexpr uint16_t default_dynamic_rtp_payload_type = 96;
 
-        auto
-        parse_sdp_ip_address(const VHD_SDP_IP_ADDRESS& ip_address_struct) -> ipaddress::ip_address
+        auto parse_sdp_ip_address(const VHD_SDP_IP_ADDRESS& ip_address_struct)
+            -> ipaddress::ip_address
         {
             if (ip_address_struct.Version == VHD_SDP_IP_VERSION_4)
             {
@@ -294,8 +294,8 @@ namespace Deltacast::VideoMonitor::Session
             return media;
         }
 
-        auto
-        to_ipv6_bytes(const ipaddress::ip_address& addr) -> std::array<uint8_t, ipv6_byte_count>
+        auto to_ipv6_bytes(const ipaddress::ip_address& addr)
+            -> std::array<uint8_t, ipv6_byte_count>
         {
             const auto&                          v6_bytes = addr.v6().value().bytes();
             std::array<uint8_t, ipv6_byte_count> result{};
@@ -436,8 +436,8 @@ namespace Deltacast::VideoMonitor::Session
 
         auto stream_address_to_string(
             const Deltacast::Wrapper::StreamComponents::IpComponents::Essence& stream,
-            const ipaddress::ip_address& configured_ip_address,
-            bool                         destination_address) -> std::string
+            const ipaddress::ip_address& configured_ip_address, bool destination_address)
+            -> std::string
         {
             if (configured_ip_address.is_v6())
             {
@@ -782,11 +782,12 @@ namespace Deltacast::VideoMonitor::Session
 
     void IpInputSession::prepare_video_stream()
     {
-        auto& board = this->board();
-        auto  stream_id = this->stream_id();
-        const auto main_payload_type = m_input_configuration.has_value()
-                                           ? m_input_configuration->main_filtering_config.payload_type
-                                           : std::optional<uint16_t>{ m_main_media.PayloadType };
+        auto&      board = this->board();
+        auto       stream_id = this->stream_id();
+        const auto main_payload_type =
+            m_input_configuration.has_value()
+                ? m_input_configuration->main_filtering_config.payload_type
+                : std::optional<uint16_t>{ m_main_media.PayloadType };
 
         spdlog::trace("Opening ST2110-20 essence stream for RX{}", stream_id);
 
@@ -799,8 +800,7 @@ namespace Deltacast::VideoMonitor::Session
                      destination_ip_address.to_string(), m_main_media.UdpPort,
                      m_main_media.PayloadType);
         configure_destination(m_stream->main_stream(), board.ip().port(main_port_index), m_session,
-                              m_main_media, destination_ip_address,
-                              main_payload_type);
+                              m_main_media, destination_ip_address, main_payload_type);
 
         m_stream->video().set_video_standard(m_main_media.ST2110_20.VideoStandard);
         m_stream->video().set_sampling_rate(m_main_media.ST2110_20.Sampling);
@@ -828,8 +828,7 @@ namespace Deltacast::VideoMonitor::Session
                          destination_ip_address.to_string(), m_sps_media.UdpPort,
                          m_sps_media.PayloadType);
             configure_destination(m_stream->sps_stream(), board.ip().port(sps_port_index),
-                                  m_session, m_sps_media, destination_ip_address,
-                                  sps_payload_type);
+                                  m_session, m_sps_media, destination_ip_address, sps_payload_type);
         }
     }
 
@@ -861,8 +860,8 @@ namespace Deltacast::VideoMonitor::Session
         return slot.video_essence().buffer();
     }
 
-    auto
-    IpInputSession::get_video_characteristics() -> Deltacast::Wrapper::Helper::VideoCharacteristics
+    auto IpInputSession::get_video_characteristics()
+        -> Deltacast::Wrapper::Helper::VideoCharacteristics
     {
         return { m_video_characteristics.width, m_video_characteristics.height,
                  m_video_characteristics.interlaced,
