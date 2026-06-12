@@ -18,7 +18,16 @@ jobs:
           submodules: recursive
 
       - name: Install clang-format
-        run: sudo apt-get update && sudo apt-get install -y clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lsb-release wget
+          # Use official LLVM install script to configure repos
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22 all
+          rm llvm.sh
+          # Install clang-format-22 explicitly
+          sudo apt-get install -y clang-format-22
 
       - name: C++ format check
         shell: bash
@@ -36,6 +45,5 @@ jobs:
             exit 0
           fi
 
-          find "${dirs[@]}" -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
-            ! -path 'src/version.hpp' -print0 \
-            | xargs -0 -r clang-format --dry-run --Werror
+          find "${dirs[@]}" -type f \( -name '*.cpp' -o -name '*.hpp' \) ! -path 'src/version.hpp' -print0 \
+            | xargs -0 -r clang-format-22 --dry-run --Werror
