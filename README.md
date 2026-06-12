@@ -18,7 +18,7 @@ VideoViewer requires some dependencies to be installed on the system:
     cmake v3.20 or higher
     glfw v3.4.0
     Python 3
-    jinja2 (Python package)
+    jinja2 (as a Python package or through your package manager)
 
 We recommend using Conan 2.x to retrieve those dependencies:
 
@@ -30,10 +30,8 @@ The table below summarizes the expected compatibility between `video-viewer` and
 
 | `video-viewer` version | Supported VideoMaster SDK versions |
 | --- | --- |
-| `>=2.0.0, <3.0.0` | `>=6.30` and `<6.IMQ` |
-| `3.0.0` (planned) | `>=6.IMQ` |
-
-`IMQ` is a placeholder and must be replaced with the actual VideoMaster SDK version once finalized.
+| `>=2.0.0, <3.0.0` | `>=6.30` and `<6.35.1 beta` |
+| `3.0.0` | `>=6.35.1 beta` |
 
 ## VideoMaster SDK
 
