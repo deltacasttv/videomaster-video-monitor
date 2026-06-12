@@ -195,6 +195,10 @@ namespace Deltacast::VideoMonitor
                 }
             }
 
+            // Stop and join the renderer thread before checking for exceptions to ensure
+            // any exception set just before or during teardown is not missed.
+            renderer.stop();
+
             // Check if renderer thread had an exception
             if (auto renderer_exception = renderer.get_thread_exception())
             {

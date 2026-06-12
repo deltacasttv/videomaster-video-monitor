@@ -14,6 +14,7 @@
  */
 
 #include "sdi_input_session.hpp"
+#include "exceptions.hpp"
 #include "helper.hpp"
 #include "loopback_input_session.hpp"
 #include "shared_resources.hpp"
@@ -31,7 +32,6 @@
 #endif
 #include <memory>
 #include <spdlog/spdlog.h>
-#include <stdexcept>
 
 namespace Deltacast::VideoMonitor::Session
 {
@@ -57,7 +57,8 @@ namespace Deltacast::VideoMonitor::Session
         if (!Deltacast::VideoMonitor::Helper::wait_for_input(
                 board.rx(this->stream_id()), this->shared_resources().stop_is_requested))
         {
-            throw std::runtime_error("No input signal detected on the specified stream");
+            throw Deltacast::VideoMonitor::Exceptions::SignalDetectionException(
+                "No input signal detected on the specified stream");
         }
 
         m_video_standard = m_stream->video_standard();

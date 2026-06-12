@@ -17,12 +17,7 @@
 #include "shared_resources.hpp"
 #include "video_monitor.hpp"
 
-#include <CLI/CLI.hpp>
-#include <VideoMasterCppApi/api.hpp>
-#include <VideoMasterCppApi/board/board.hpp>
 #include <VideoMasterCppApi/exception.hpp>
-#include <VideoMasterCppApi/to_string.hpp>
-#include <atomic>
 #include <csignal>
 #include <exception>
 #include <spdlog/spdlog.h>

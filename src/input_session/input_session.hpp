@@ -58,7 +58,7 @@ namespace Deltacast::VideoMonitor::Session
             return { stream.buffer_queue().slots_count(), stream.buffer_queue().slots_dropped() };
         }
 
-        virtual auto video_input_has_changed() -> bool override
+        auto video_input_has_changed() -> bool override
         {
             auto& board = this->board();
             this->ensure_stream_is_prepared();
@@ -79,7 +79,7 @@ namespace Deltacast::VideoMonitor::Session
             return input_has_changed;
         }
 
-        virtual auto get_video_buffer() -> std::pair<UBYTE*, ULONG> override
+        auto get_video_buffer() -> std::pair<UBYTE*, ULONG> override
         {
             this->ensure_board_is_opened();
             m_current_slot = this->stream().pop_slot();
