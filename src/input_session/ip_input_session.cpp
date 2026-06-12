@@ -173,14 +173,9 @@ namespace Deltacast::VideoMonitor::Session
                     continue;
                 }
 
-                if (media_configuration.framerate_denominator < 0)
+                if (media_configuration.framerate_denominator == 0)
                 {
-                    spdlog::trace("ST2110-20 video standard {} does not match negative framerate "
-                                  "denominator {}",
-                                  Deltacast::Wrapper::to_pretty_string(
-                                      static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)),
-                                  media_configuration.framerate_denominator);
-                    continue;
+                    throw Exceptions::ConfigurationException("Framerate denominator cannot be 0");
                 }
 
                 const auto framerate = static_cast<uint64_t>(
@@ -483,9 +478,7 @@ namespace Deltacast::VideoMonitor::Session
             {
                 spdlog::trace(
                     "Configuring multicast filtering for destination {} with no source filtering",
-                    ipaddress::ipv4_address::from_uint(
-                        media_description.SourceFilter.DestinationIP.AddressV4)
-                        .to_string());
+                    parse_sdp_ip_address(media_description.DestinationIP).to_string());
                 return;
             }
 
@@ -731,6 +724,7 @@ namespace Deltacast::VideoMonitor::Session
     void IpInputSession::open_board()
     {
         spdlog::trace("Opening IP board {} for RX{}", this->device_id(), this->stream_id());
+        this->m_board.reset();
         m_multicast_groups.clear();
 
         this->m_board = std::make_unique<Deltacast::Wrapper::Board>(Deltacast::Wrapper::Board::open(
@@ -790,6 +784,9 @@ namespace Deltacast::VideoMonitor::Session
     {
         auto& board = this->board();
         auto  stream_id = this->stream_id();
+        const auto main_payload_type = m_input_configuration.has_value()
+                                           ? m_input_configuration->main_filtering_config.payload_type
+                                           : std::optional<uint16_t>{ m_main_media.PayloadType };
 
         spdlog::trace("Opening ST2110-20 essence stream for RX{}", stream_id);
 
@@ -803,7 +800,7 @@ namespace Deltacast::VideoMonitor::Session
                      m_main_media.PayloadType);
         configure_destination(m_stream->main_stream(), board.ip().port(main_port_index), m_session,
                               m_main_media, destination_ip_address,
-                              m_input_configuration->main_filtering_config.payload_type);
+                              main_payload_type);
 
         m_stream->video().set_video_standard(m_main_media.ST2110_20.VideoStandard);
         m_stream->video().set_sampling_rate(m_main_media.ST2110_20.Sampling);
@@ -819,6 +816,12 @@ namespace Deltacast::VideoMonitor::Session
 
         if (m_use_sps_stream)
         {
+            const auto sps_payload_type =
+                m_input_configuration.has_value() &&
+                        m_input_configuration->sps_filtering_config.has_value()
+                    ? m_input_configuration->sps_filtering_config->payload_type
+                    : std::optional<uint16_t>{ m_sps_media.PayloadType };
+
             auto destination_ip_address = parse_sdp_ip_address(m_sps_media.DestinationIP);
             spdlog::info("Configuring SPS ST2110 media: destination {}, UDP {}, "
                          "payload {}",
@@ -826,9 +829,7 @@ namespace Deltacast::VideoMonitor::Session
                          m_sps_media.PayloadType);
             configure_destination(m_stream->sps_stream(), board.ip().port(sps_port_index),
                                   m_session, m_sps_media, destination_ip_address,
-                                  m_input_configuration->sps_filtering_config.has_value()
-                                      ? m_input_configuration->sps_filtering_config->payload_type
-                                      : std::nullopt);
+                                  sps_payload_type);
         }
     }
 
@@ -855,8 +856,8 @@ namespace Deltacast::VideoMonitor::Session
     auto IpInputSession::get_video_buffer() -> std::pair<UBYTE*, ULONG>
     {
         this->ensure_board_is_opened();
-        auto  current_slot = this->stream().pop_slot();
-        auto& slot = static_cast<Deltacast::Wrapper::Ip2110Slot&>(*current_slot);
+        this->m_current_slot = this->stream().pop_slot();
+        auto& slot = static_cast<Deltacast::Wrapper::Ip2110Slot&>(*this->m_current_slot);
         return slot.video_essence().buffer();
     }
 

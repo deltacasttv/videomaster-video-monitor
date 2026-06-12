@@ -93,8 +93,9 @@ Use this method when no SDP file is provided and media parameters are passed exp
 Main stream only:
 
     ./videomaster-video-monitor --device 0 --input 0 \
-      --ip-main-video-width 1920 --ip-main-video-height 1080 \
-      --ip-main-framerate-num 60000 --ip-main-framerate-den 1001 \
+      --ip-video-width 1920 --ip-video-height 1080 \
+      --ip-framerate-num 60000 --ip-framerate-den 1001 \
+      --ip-bit-depth 10 \
       --ip-main-destination 239.10.20.30 --ip-main-udp-port 5004 \
       --ip-main-payload-type 112
 
@@ -106,8 +107,6 @@ Main + SPS stream:
       --ip-framerate-num 60000 --ip-framerate-den 1001 \
       --ip-main-destination 239.10.20.30 --ip-main-udp-port 5004 \
       --ip-main-payload-type 112 \
-      --ip-sps-video-width 1920 --ip-sps-video-height 1080 \
-      --ip-sps-framerate-num 60000 --ip-sps-framerate-den 1001 \
       --ip-sps-destination 239.10.20.31 --ip-sps-udp-port 5006 \
       --ip-sps-payload-type 113
 

@@ -233,7 +233,7 @@ namespace Deltacast::VideoMonitor
     {
         auto* ip_board_option_group = m_app.add_option_group("IP board options");
         ip_board_option_group
-            ->add_option("--sdp-file", m_sdp_file_path, "Path to save the SDP file for IP input")
+            ->add_option("--sdp-file", m_sdp_file_path, "Path to the SDP file describing the IP input stream")
             ->check(CLI::ExistingFile)
             ->capture_default_str();
         auto* ip_dhcp_option = ip_board_option_group->add_flag("--ip-dhcp", m_ip_dhcp,

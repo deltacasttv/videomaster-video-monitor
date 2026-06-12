@@ -82,12 +82,13 @@ namespace Deltacast::VideoMonitor::Session
         virtual auto get_video_buffer() -> std::pair<UBYTE*, ULONG> override
         {
             this->ensure_board_is_opened();
-            auto slot = this->stream().pop_slot();
-            return slot->video().buffer();
+            m_current_slot = this->stream().pop_slot();
+            return m_current_slot->video().buffer();
         }
 
      protected:
         std::unique_ptr<TStream> m_stream;
+          decltype(std::declval<TStream&>().pop_slot()) m_current_slot;
 
         auto stream() -> TStream&
         {
