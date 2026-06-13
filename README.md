@@ -131,11 +131,11 @@ Example `args.txt`:
     1920
     --ip-video-height
     1080
-    --ip-bit-depth
+    --ip-video-bit-depth
     10
-    --ip-framerate-num
+    --ip-video-framerate-num
     60000
-    --ip-framerate-den
+    --ip-video-framerate-den
     1001
     --ip-main-destination
     239.10.20.30
