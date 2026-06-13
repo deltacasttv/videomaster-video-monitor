@@ -94,8 +94,8 @@ Main stream only:
 
     ./videomaster-video-monitor --device 0 --input 0 \
       --ip-video-width 1920 --ip-video-height 1080 \
-      --ip-framerate-num 60000 --ip-framerate-den 1001 \
-      --ip-bit-depth 10 \
+      --ip-video-framerate-num 60000 --ip-video-framerate-den 1001 \
+      --ip-video-bit-depth 10 \
       --ip-main-destination 239.10.20.30 --ip-main-udp-port 5004 \
       --ip-main-payload-type 112
 
