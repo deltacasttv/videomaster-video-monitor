@@ -125,7 +125,7 @@ namespace Deltacast::VideoMonitor::Core
         {
             throw Deltacast::VideoMonitor::Exceptions::ConfigurationException(
                 "Explicit IP media mode requires --ip-video-width, --ip-video-height, "
-                "--ip-bit-depth, --ip-framerate-num and --ip-framerate-den");
+                "--ip-video-bit-depth, --ip-video-framerate-num and --ip-video-framerate-den");
         }
 
         if (has_sps_explicit_option && !has_explicit_media_core(options.core))
