@@ -255,8 +255,11 @@ namespace Deltacast::VideoMonitor::Core
         Deltacast::VideoMonitor::Session::IpFilteringConfiguration        main_filtering_config;
         Deltacast::VideoMonitor::Session::IpMediaDescriptionConfiguration media_description;
         std::optional<ipaddress::ip_address>                              source_ip_address =
-            Deltacast::VideoMonitor::Helper::parse_ip_address(options.source_ip.value(),
-                                                              "--ip-source-ip");
+            options.source_ip.has_value()
+                ? std::make_optional(
+                      Deltacast::VideoMonitor::Helper::parse_ip_address(options.source_ip.value(),
+                                                                        "--ip-source-ip"))
+                : std::nullopt;
         if (options.main.destination.has_value())
         {
             main_destination_config.destination_ip_address =
