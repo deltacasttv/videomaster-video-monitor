@@ -792,11 +792,12 @@ namespace Deltacast::VideoMonitor::Session
     {
         auto&      board = this->board();
         auto       stream_id = this->stream_id();
-        const auto main_payload_type =
+        const auto main_payload_type = std::optional<uint16_t>{
             m_input_configuration.has_value()
-                ? m_input_configuration->main_filtering_config.payload_type
-                : std::optional<uint16_t>{ m_main_media.PayloadType };
-
+                ? m_input_configuration->main_filtering_config.payload_type.value_or(
+                      m_main_media.PayloadType)
+                : m_main_media.PayloadType
+        };
         spdlog::trace("Opening ST2110-20 essence stream for RX{}", stream_id);
 
         m_stream = std::make_unique<Deltacast::Wrapper::Ip2110Stream>(
