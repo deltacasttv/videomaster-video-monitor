@@ -825,11 +825,13 @@ namespace Deltacast::VideoMonitor::Session
 
         if (m_use_sps_stream)
         {
-            const auto sps_payload_type =
+            const auto sps_payload_type = std::optional<uint16_t>{
                 m_input_configuration.has_value() &&
                         m_input_configuration->sps_filtering_config.has_value()
-                    ? m_input_configuration->sps_filtering_config->payload_type
-                    : std::optional<uint16_t>{ m_sps_media.PayloadType };
+                    ? m_input_configuration->sps_filtering_config->payload_type.value_or(
+                          m_sps_media.PayloadType)
+                    : m_sps_media.PayloadType
+            };
 
             auto destination_ip_address = parse_sdp_ip_address(m_sps_media.DestinationIP);
             spdlog::info("Configuring SPS ST2110 media: destination {}, UDP {}, "
