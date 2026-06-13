@@ -52,6 +52,11 @@ namespace Deltacast::VideoMonitor::Renderer
     void WindowedRenderer::init(int image_width, int image_height,
                                 Deltacast::VideoViewer::InputFormat input_format)
     {
+        if (m_monitor_thread.joinable())
+        {
+            stop();
+        }
+
         m_monitor_ready = false;
         m_thread_exception = nullptr;
         m_monitor_thread = std::thread(&WindowedRenderer::monitor, this, image_width, image_height,
