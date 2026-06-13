@@ -21,6 +21,7 @@
 
 #include <filesystem>
 #include <fmt/format.h>
+#include <ipaddress/ip-any-address.hpp>
 #include <optional>
 #include <string>
 
@@ -31,20 +32,20 @@ namespace Deltacast::VideoMonitor::Core
         auto has_explicit_stream_option(const IpMediaStreamCliOptions& options) -> bool
         {
             return options.destination.has_value() || options.udp_port.has_value() ||
-                   options.payload_type.has_value() || options.source_ip.has_value() ||
-                   options.source_filter_mode.has_value() || !options.source_filter_sources.empty();
+                   options.payload_type.has_value() || options.source_filter_mode.has_value() ||
+                   !options.source_filter_sources.empty();
         }
 
         auto has_any_explicit_media_core_option(const IpMediaCoreCliOptions& options) -> bool
         {
-            return options.video_width.has_value() || options.video_height.has_value() ||
+            return options.width.has_value() || options.height.has_value() ||
                    options.bit_depth.has_value() || options.framerate_numerator.has_value() ||
                    options.framerate_denominator.has_value();
         }
 
         auto has_explicit_media_core(const IpMediaCoreCliOptions& options) -> bool
         {
-            return options.video_width.has_value() && options.video_height.has_value() &&
+            return options.width.has_value() && options.height.has_value() &&
                    options.bit_depth.has_value() && options.framerate_numerator.has_value() &&
                    options.framerate_denominator.has_value();
         }
@@ -134,15 +135,16 @@ namespace Deltacast::VideoMonitor::Core
                 "--ip-bit-depth, --ip-framerate-num and --ip-framerate-den");
         }
 
+        if (options.source_ip.has_value())
+        {
+            Deltacast::VideoMonitor::Helper::parse_ip_address(options.source_ip.value(),
+                                                              "--ip-source-ip");
+        }
+
         if (options.main.destination.has_value())
         {
             Deltacast::VideoMonitor::Helper::parse_ip_address(options.main.destination.value(),
                                                               "--ip-main-destination");
-        }
-        if (options.main.source_ip.has_value())
-        {
-            Deltacast::VideoMonitor::Helper::parse_ip_address(options.main.source_ip.value(),
-                                                              "--ip-main-source-ip");
         }
 
         validate_source_filter_options(options.main, "--ip-main-destination",
@@ -153,11 +155,6 @@ namespace Deltacast::VideoMonitor::Core
         {
             Deltacast::VideoMonitor::Helper::parse_ip_address(options.sps.destination.value(),
                                                               "--ip-sps-destination");
-        }
-        if (options.sps.source_ip.has_value())
-        {
-            Deltacast::VideoMonitor::Helper::parse_ip_address(options.sps.source_ip.value(),
-                                                              "--ip-sps-source-ip");
         }
 
         validate_source_filter_options(options.sps, "--ip-sps-destination",
@@ -257,6 +254,9 @@ namespace Deltacast::VideoMonitor::Core
         Deltacast::VideoMonitor::Session::IpDestinationConfiguration      main_destination_config;
         Deltacast::VideoMonitor::Session::IpFilteringConfiguration        main_filtering_config;
         Deltacast::VideoMonitor::Session::IpMediaDescriptionConfiguration media_description;
+        std::optional<ipaddress::ip_address>                              source_ip_address =
+            Deltacast::VideoMonitor::Helper::parse_ip_address(options.source_ip.value(),
+                                                              "--ip-source-ip");
         if (options.main.destination.has_value())
         {
             main_destination_config.destination_ip_address =
@@ -265,17 +265,11 @@ namespace Deltacast::VideoMonitor::Core
         }
         main_destination_config.udp_port = options.main.udp_port;
         main_filtering_config.payload_type = options.main.payload_type;
-        media_description.video_width = options.core.video_width.value();
-        media_description.video_height = options.core.video_height.value();
+        media_description.width = options.core.width.value();
+        media_description.height = options.core.height.value();
         media_description.bit_depth = options.core.bit_depth.value();
         media_description.framerate_numerator = options.core.framerate_numerator.value();
         media_description.framerate_denominator = options.core.framerate_denominator.value();
-        if (options.main.source_ip.has_value())
-        {
-            main_filtering_config.source_ip_address =
-                Deltacast::VideoMonitor::Helper::parse_ip_address(options.main.source_ip.value(),
-                                                                  "--ip-main-source-ip");
-        }
 
         if (const auto filter_mode = source_filter_mode_from_cli(options.main.source_filter_mode);
             filter_mode.has_value())
@@ -291,10 +285,10 @@ namespace Deltacast::VideoMonitor::Core
             main_filtering_config.source_filter = source_filter;
         }
 
-        Deltacast::VideoMonitor::Session::IpInputConfiguration config{ main_destination_config,
-                                                                       main_filtering_config,
-                                                                       std::nullopt, std::nullopt,
-                                                                       media_description };
+        Deltacast::VideoMonitor::Session::IpInputConfiguration config{
+            source_ip_address, main_destination_config, main_filtering_config, std::nullopt,
+            std::nullopt,      media_description
+        };
 
         if (has_sps_explicit_option)
         {
@@ -308,12 +302,6 @@ namespace Deltacast::VideoMonitor::Core
             }
             sps_destination_config.udp_port = options.sps.udp_port;
             sps_filtering_config.payload_type = options.sps.payload_type;
-            if (options.sps.source_ip.has_value())
-            {
-                sps_filtering_config.source_ip_address =
-                    Deltacast::VideoMonitor::Helper::parse_ip_address(options.sps.source_ip.value(),
-                                                                      "--ip-sps-source-ip");
-            }
 
             if (const auto filter_mode = source_filter_mode_from_cli(
                     options.sps.source_filter_mode);

@@ -87,12 +87,13 @@ namespace Deltacast::VideoMonitor
             m_ip_sps_dhcp, m_ip_sps_address, m_ip_sps_subnet
         };
         const auto ip_media_options = Deltacast::VideoMonitor::Core::IpMediaCliOptions{
+            m_ip_source_ip,
             { m_ip_main_destination, m_ip_main_udp_port, m_ip_main_payload_type,
-              m_ip_main_source_ip, m_ip_main_source_filter_mode, m_ip_main_source_filter_sources },
-            { m_ip_sps_destination, m_ip_sps_udp_port, m_ip_sps_payload_type, m_ip_sps_source_ip,
+              m_ip_main_source_filter_mode, m_ip_main_source_filter_sources },
+            { m_ip_sps_destination, m_ip_sps_udp_port, m_ip_sps_payload_type,
               m_ip_sps_source_filter_mode, m_ip_sps_source_filter_sources },
-            { m_ip_video_width, m_ip_video_height, m_ip_bit_depth, m_ip_framerate_numerator,
-              m_ip_framerate_denominator }
+            { m_ip_video_width, m_ip_video_height, m_ip_video_bit_depth,
+              m_ip_video_framerate_numerator, m_ip_video_framerate_denominator }
         };
 
         Deltacast::VideoMonitor::Core::validate_explicit_ip_media_options(m_sdp_file_path,
@@ -257,6 +258,12 @@ namespace Deltacast::VideoMonitor
         auto* ip_sps_subnet_option = ip_board_option_group->add_option(
             "--ip-sps-subnet", m_ip_sps_subnet, "Static IPv4 subnet mask for SPS IP port");
 
+        auto* ip_source_ip_option =
+            ip_board_option_group
+                ->add_option("--ip-source-ip", m_ip_source_ip,
+                             "Origin IP address for source filtering in explicit IP media mode")
+                ->capture_default_str();
+
         auto* ip_main_destination_option =
             ip_board_option_group
                 ->add_option("--ip-main-destination", m_ip_main_destination,
@@ -272,11 +279,6 @@ namespace Deltacast::VideoMonitor
                 ->add_option("--ip-main-payload-type", m_ip_main_payload_type,
                              "Main stream RTP payload type for explicit IP media mode")
                 ->check(CLI::Range(0, 127));  // NOLINT(readability-magic-numbers)
-        auto* ip_main_source_ip_option =
-            ip_board_option_group
-                ->add_option("--ip-main-source-ip", m_ip_main_source_ip,
-                             "Main stream source IP address for unicast filtering")
-                ->capture_default_str();
         auto* ip_main_filter_mode_option =
             ip_board_option_group
                 ->add_option("--ip-main-source-filter-mode", m_ip_main_source_filter_mode,
@@ -305,11 +307,6 @@ namespace Deltacast::VideoMonitor
                 ->add_option("--ip-sps-payload-type", m_ip_sps_payload_type,
                              "SPS stream RTP payload type for explicit IP media mode")
                 ->check(CLI::Range(0, 127));  // NOLINT(readability-magic-numbers)
-        auto* ip_sps_source_ip_option =
-            ip_board_option_group
-                ->add_option("--ip-sps-source-ip", m_ip_sps_source_ip,
-                             "SPS stream source IP address for unicast filtering")
-                ->capture_default_str();
         auto* ip_sps_filter_mode_option =
             ip_board_option_group
                 ->add_option("--ip-sps-source-filter-mode", m_ip_sps_source_filter_mode,
@@ -333,20 +330,20 @@ namespace Deltacast::VideoMonitor
                 ->add_option("--ip-video-height", m_ip_video_height,
                              "IP stream video height for explicit IP media mode")
                 ->check(CLI::PositiveNumber);
-        auto* ip_bit_depth_option =
+        auto* ip_video_bit_depth_option =
             ip_board_option_group
-                ->add_option("--ip-bit-depth", m_ip_bit_depth,
-                             "IP stream bit depth for explicit IP media mode")
+                ->add_option("--ip-video-bit-depth", m_ip_video_bit_depth,
+                             "IP stream video bit depth for explicit IP media mode")
                 ->check(CLI::PositiveNumber);
-        auto* ip_framerate_num_option =
+        auto* ip_video_framerate_num_option =
             ip_board_option_group
-                ->add_option("--ip-framerate-num", m_ip_framerate_numerator,
-                             "IP stream framerate numerator for explicit IP media mode")
+                ->add_option("--ip-video-framerate-num", m_ip_video_framerate_numerator,
+                             "IP stream video framerate numerator for explicit IP media mode")
                 ->check(CLI::PositiveNumber);
-        auto* ip_framerate_den_option =
+        auto* ip_video_framerate_den_option =
             ip_board_option_group
-                ->add_option("--ip-framerate-den", m_ip_framerate_denominator,
-                             "IP stream framerate denominator for explicit IP media mode")
+                ->add_option("--ip-video-framerate-den", m_ip_video_framerate_denominator,
+                             "IP stream video framerate denominator for explicit IP media mode")
                 ->check(CLI::PositiveNumber);
 
         ip_address_option->needs(ip_subnet_option);
@@ -365,51 +362,45 @@ namespace Deltacast::VideoMonitor
 
         ip_main_destination_option->needs(ip_video_width_option);
         ip_main_destination_option->needs(ip_video_height_option);
-        ip_main_destination_option->needs(ip_bit_depth_option);
-        ip_main_destination_option->needs(ip_framerate_num_option);
-        ip_main_destination_option->needs(ip_framerate_den_option);
+        ip_main_destination_option->needs(ip_video_bit_depth_option);
+        ip_main_destination_option->needs(ip_video_framerate_num_option);
+        ip_main_destination_option->needs(ip_video_framerate_den_option);
 
         ip_main_udp_port_option->needs(ip_video_width_option);
         ip_main_udp_port_option->needs(ip_video_height_option);
-        ip_main_udp_port_option->needs(ip_bit_depth_option);
-        ip_main_udp_port_option->needs(ip_framerate_num_option);
-        ip_main_udp_port_option->needs(ip_framerate_den_option);
+        ip_main_udp_port_option->needs(ip_video_bit_depth_option);
+        ip_main_udp_port_option->needs(ip_video_framerate_num_option);
+        ip_main_udp_port_option->needs(ip_video_framerate_den_option);
 
         ip_main_payload_type_option->needs(ip_video_width_option);
         ip_main_payload_type_option->needs(ip_video_height_option);
-        ip_main_payload_type_option->needs(ip_bit_depth_option);
-        ip_main_payload_type_option->needs(ip_framerate_num_option);
-        ip_main_payload_type_option->needs(ip_framerate_den_option);
+        ip_main_payload_type_option->needs(ip_video_bit_depth_option);
+        ip_main_payload_type_option->needs(ip_video_framerate_num_option);
+        ip_main_payload_type_option->needs(ip_video_framerate_den_option);
 
         ip_sps_destination_option->needs(ip_video_width_option);
         ip_sps_destination_option->needs(ip_video_height_option);
-        ip_sps_destination_option->needs(ip_bit_depth_option);
-        ip_sps_destination_option->needs(ip_framerate_num_option);
-        ip_sps_destination_option->needs(ip_framerate_den_option);
+        ip_sps_destination_option->needs(ip_video_bit_depth_option);
+        ip_sps_destination_option->needs(ip_video_framerate_num_option);
+        ip_sps_destination_option->needs(ip_video_framerate_den_option);
 
         ip_sps_udp_port_option->needs(ip_video_width_option);
         ip_sps_udp_port_option->needs(ip_video_height_option);
-        ip_sps_udp_port_option->needs(ip_bit_depth_option);
-        ip_sps_udp_port_option->needs(ip_framerate_num_option);
-        ip_sps_udp_port_option->needs(ip_framerate_den_option);
+        ip_sps_udp_port_option->needs(ip_video_bit_depth_option);
+        ip_sps_udp_port_option->needs(ip_video_framerate_num_option);
+        ip_sps_udp_port_option->needs(ip_video_framerate_den_option);
 
         ip_sps_payload_type_option->needs(ip_video_width_option);
         ip_sps_payload_type_option->needs(ip_video_height_option);
-        ip_sps_payload_type_option->needs(ip_bit_depth_option);
-        ip_sps_payload_type_option->needs(ip_framerate_num_option);
-        ip_sps_payload_type_option->needs(ip_framerate_den_option);
+        ip_sps_payload_type_option->needs(ip_video_bit_depth_option);
+        ip_sps_payload_type_option->needs(ip_video_framerate_num_option);
+        ip_sps_payload_type_option->needs(ip_video_framerate_den_option);
 
-        ip_main_source_ip_option->needs(ip_video_width_option);
-        ip_main_source_ip_option->needs(ip_video_height_option);
-        ip_main_source_ip_option->needs(ip_bit_depth_option);
-        ip_main_source_ip_option->needs(ip_framerate_num_option);
-        ip_main_source_ip_option->needs(ip_framerate_den_option);
-
-        ip_sps_source_ip_option->needs(ip_video_width_option);
-        ip_sps_source_ip_option->needs(ip_video_height_option);
-        ip_sps_source_ip_option->needs(ip_bit_depth_option);
-        ip_sps_source_ip_option->needs(ip_framerate_num_option);
-        ip_sps_source_ip_option->needs(ip_framerate_den_option);
+        ip_source_ip_option->needs(ip_video_width_option);
+        ip_source_ip_option->needs(ip_video_height_option);
+        ip_source_ip_option->needs(ip_video_bit_depth_option);
+        ip_source_ip_option->needs(ip_video_framerate_num_option);
+        ip_source_ip_option->needs(ip_video_framerate_den_option);
 
         ip_main_filter_mode_option->needs(ip_main_filter_sources_option);
         ip_main_filter_mode_option->needs(ip_main_destination_option);
@@ -422,29 +413,29 @@ namespace Deltacast::VideoMonitor
         ip_sps_filter_sources_option->needs(ip_sps_destination_option);
 
         ip_video_width_option->needs(ip_video_height_option);
-        ip_video_width_option->needs(ip_bit_depth_option);
-        ip_video_width_option->needs(ip_framerate_num_option);
-        ip_video_width_option->needs(ip_framerate_den_option);
+        ip_video_width_option->needs(ip_video_bit_depth_option);
+        ip_video_width_option->needs(ip_video_framerate_num_option);
+        ip_video_width_option->needs(ip_video_framerate_den_option);
 
         ip_video_height_option->needs(ip_video_width_option);
-        ip_video_height_option->needs(ip_bit_depth_option);
-        ip_video_height_option->needs(ip_framerate_num_option);
-        ip_video_height_option->needs(ip_framerate_den_option);
+        ip_video_height_option->needs(ip_video_bit_depth_option);
+        ip_video_height_option->needs(ip_video_framerate_num_option);
+        ip_video_height_option->needs(ip_video_framerate_den_option);
 
-        ip_bit_depth_option->needs(ip_video_width_option);
-        ip_bit_depth_option->needs(ip_video_height_option);
-        ip_bit_depth_option->needs(ip_framerate_num_option);
-        ip_bit_depth_option->needs(ip_framerate_den_option);
+        ip_video_bit_depth_option->needs(ip_video_width_option);
+        ip_video_bit_depth_option->needs(ip_video_height_option);
+        ip_video_bit_depth_option->needs(ip_video_framerate_num_option);
+        ip_video_bit_depth_option->needs(ip_video_framerate_den_option);
 
-        ip_framerate_num_option->needs(ip_video_width_option);
-        ip_framerate_num_option->needs(ip_video_height_option);
-        ip_framerate_num_option->needs(ip_bit_depth_option);
-        ip_framerate_num_option->needs(ip_framerate_den_option);
+        ip_video_framerate_num_option->needs(ip_video_width_option);
+        ip_video_framerate_num_option->needs(ip_video_height_option);
+        ip_video_framerate_num_option->needs(ip_video_bit_depth_option);
+        ip_video_framerate_num_option->needs(ip_video_framerate_den_option);
 
-        ip_framerate_den_option->needs(ip_video_width_option);
-        ip_framerate_den_option->needs(ip_video_height_option);
-        ip_framerate_den_option->needs(ip_bit_depth_option);
-        ip_framerate_den_option->needs(ip_framerate_num_option);
+        ip_video_framerate_den_option->needs(ip_video_width_option);
+        ip_video_framerate_den_option->needs(ip_video_height_option);
+        ip_video_framerate_den_option->needs(ip_video_bit_depth_option);
+        ip_video_framerate_den_option->needs(ip_video_framerate_num_option);
     }
 
     void VideoMonitorApp::init_common_options()

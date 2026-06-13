@@ -39,6 +39,11 @@ int main(int argc, char** argv)
 
         return app.run(argc, argv);
     }
+    catch (const Deltacast::VideoMonitor::Exceptions::StopRequestedException& e)
+    {
+        spdlog::info("{}", e.what());
+        return static_cast<int>(Deltacast::VideoMonitor::ExitCode::StopRequestedBeforeSignal);
+    }
     catch (const Deltacast::VideoMonitor::Exceptions::VideoMonitorException& e)
     {
         spdlog::error("Application Exception: {}", e.what());

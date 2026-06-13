@@ -57,6 +57,12 @@ namespace Deltacast::VideoMonitor::Session
         if (!Deltacast::VideoMonitor::Helper::wait_for_input(board.rx(stream_id()),
                                                              shared_resources().stop_is_requested))
         {
+            if (shared_resources().stop_is_requested)
+            {
+                throw Deltacast::VideoMonitor::Exceptions::StopRequestedException(
+                    "Stop requested while waiting for initial signal");
+            }
+
             throw Deltacast::VideoMonitor::Exceptions::SignalDetectionException(
                 "No input signal detected on the specified stream");
         }

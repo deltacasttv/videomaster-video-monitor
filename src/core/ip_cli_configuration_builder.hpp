@@ -41,15 +41,14 @@ namespace Deltacast::VideoMonitor::Core
         std::optional<std::string> destination;
         std::optional<uint16_t>    udp_port;
         std::optional<uint16_t>    payload_type;
-        std::optional<std::string> source_ip;
         std::optional<std::string> source_filter_mode;
         std::vector<std::string>   source_filter_sources;
     };
 
     struct IpMediaCoreCliOptions
     {
-        std::optional<uint32_t> video_width;
-        std::optional<uint32_t> video_height;
+        std::optional<uint32_t> width;
+        std::optional<uint32_t> height;
         std::optional<uint32_t> bit_depth;
         std::optional<uint32_t> framerate_numerator;
         std::optional<uint32_t> framerate_denominator;
@@ -57,9 +56,10 @@ namespace Deltacast::VideoMonitor::Core
 
     struct IpMediaCliOptions
     {
-        IpMediaStreamCliOptions main;
-        IpMediaStreamCliOptions sps;
-        IpMediaCoreCliOptions   core;
+        std::optional<std::string> source_ip;
+        IpMediaStreamCliOptions    main;
+        IpMediaStreamCliOptions    sps;
+        IpMediaCoreCliOptions      core;
     };
 
     auto build_ip_network_configuration(const IpNetworkCliOptions& options)

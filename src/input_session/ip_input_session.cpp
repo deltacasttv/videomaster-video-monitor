@@ -140,7 +140,7 @@ namespace Deltacast::VideoMonitor::Session
                               "at {}/{} fps",
                               Deltacast::Wrapper::to_pretty_string(
                                   static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)),
-                              media_configuration.video_width, media_configuration.video_height,
+                              media_configuration.width, media_configuration.height,
                               media_configuration.framerate_numerator,
                               media_configuration.framerate_denominator);
 
@@ -161,15 +161,15 @@ namespace Deltacast::VideoMonitor::Session
                     continue;
                 }
 
-                if (characteristics.width != media_configuration.video_width ||
-                    characteristics.height != media_configuration.video_height)
+                if (characteristics.width != media_configuration.width ||
+                    characteristics.height != media_configuration.height)
                 {
                     spdlog::trace(
                         "ST2110-20 video standard {} does not match resolution: {}x{} vs {}x{}",
                         Deltacast::Wrapper::to_pretty_string(
                             static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)),
-                        characteristics.width, characteristics.height,
-                        media_configuration.video_width, media_configuration.video_height);
+                        characteristics.width, characteristics.height, media_configuration.width,
+                        media_configuration.height);
                     continue;
                 }
 
@@ -207,7 +207,7 @@ namespace Deltacast::VideoMonitor::Session
             {
                 throw Exceptions::ConfigurationException(
                     fmt::format("No ST2110-20 video standard matches {}x{} at {}/{} fps",
-                                media_configuration.video_width, media_configuration.video_height,
+                                media_configuration.width, media_configuration.height,
                                 media_configuration.framerate_numerator,
                                 media_configuration.framerate_denominator));
             }
@@ -556,7 +556,7 @@ namespace Deltacast::VideoMonitor::Session
                     }
                     else
                     {
-                        spdlog::warn("Source IP address in SDP session is unspecified. Unicast "
+                        spdlog::warn("Source IP address is unspecified. Unicast "
                                      "source IP address will not be configured.");
                     }
                     const auto applied_source_ip_address =
@@ -620,8 +620,7 @@ namespace Deltacast::VideoMonitor::Session
                     m_input_configuration->media_description, "SPS");
             }
 
-            const auto source_ip_address =
-                m_input_configuration->main_filtering_config.source_ip_address;
+            const auto source_ip_address = m_input_configuration->source_ip_address;
             this->m_session.SourceIP = to_sdp_ip_address(source_ip_address);
             return;
         }

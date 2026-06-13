@@ -50,6 +50,15 @@ namespace Deltacast::VideoMonitor
             }
         };
 
+        class StopRequestedException : public VideoMonitorException
+        {
+         public:
+            explicit StopRequestedException(const std::string& message)
+                : VideoMonitorException(fmt::format("Stop Requested: {}", message))
+            {
+            }
+        };
+
         class RendererException : public VideoMonitorException
         {
          public:

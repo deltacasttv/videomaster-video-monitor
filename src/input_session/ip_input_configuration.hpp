@@ -45,14 +45,13 @@ namespace Deltacast::VideoMonitor::Session
     struct IpFilteringConfiguration
     {
         std::optional<uint16_t>                    payload_type;
-        std::optional<ipaddress::ip_address>       source_ip_address;
         std::optional<IpSourceFilterConfiguration> source_filter;
     };
 
     struct IpMediaDescriptionConfiguration
     {
-        uint32_t video_width = 0;
-        uint32_t video_height = 0;
+        uint32_t width = 0;
+        uint32_t height = 0;
         uint32_t framerate_numerator = 0;
         uint32_t framerate_denominator = 1;
         uint32_t bit_depth = 8;  // NOLINT(readability-magic-numbers)
@@ -60,6 +59,7 @@ namespace Deltacast::VideoMonitor::Session
 
     struct IpInputConfiguration
     {
+        std::optional<ipaddress::ip_address>      source_ip_address;
         IpDestinationConfiguration                main_destination_config;
         IpFilteringConfiguration                  main_filtering_config;
         std::optional<IpDestinationConfiguration> sps_destination_config;

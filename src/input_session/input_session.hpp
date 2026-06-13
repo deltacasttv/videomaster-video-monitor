@@ -66,6 +66,12 @@ namespace Deltacast::VideoMonitor::Session
             if (!Deltacast::VideoMonitor::Helper::wait_for_input(
                     board.rx(this->stream_id()), this->shared_resources().stop_is_requested))
             {
+                if (this->shared_resources().stop_is_requested)
+                {
+                    throw Deltacast::VideoMonitor::Exceptions::StopRequestedException(
+                        "Stop requested while waiting for input signal change");
+                }
+
                 throw Deltacast::VideoMonitor::Exceptions::SignalDetectionException(
                     "Failed to wait for input signal change");
             }
