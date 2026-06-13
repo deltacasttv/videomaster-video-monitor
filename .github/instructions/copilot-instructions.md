@@ -48,7 +48,7 @@ We are aware that the lack of unit tests is a shortcoming. Please don't comment 
 ## Build Workflow
 
 ### Install dependencies
-`conan install conanfile.txt -b missing -s build_type=<Debug|Release>`
+`conan install . -b missing -s build_type=<Debug|Release>`
 
 ### Configure
 `cmake --preset conan-<release|debug>`
