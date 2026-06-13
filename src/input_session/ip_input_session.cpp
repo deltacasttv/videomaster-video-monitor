@@ -550,7 +550,15 @@ namespace Deltacast::VideoMonitor::Session
                     const auto source_ip_address = parse_sdp_ip_address(session.SourceIP);
                     spdlog::trace("Parsed source IP address {} from SDP session",
                                   source_ip_address.to_string());
-                    set_source_address(stream, source_ip_address);
+                    if (!source_ip_address.is_unspecified())
+                    {
+                        set_source_address(stream, source_ip_address);
+                    }
+                    else
+                    {
+                        spdlog::warn("Source IP address in SDP session is unspecified. Unicast "
+                                     "source IP address will not be configured.");
+                    }
                     const auto applied_source_ip_address =
                         stream_address_to_string(stream, source_ip_address, false);
                     spdlog::trace(

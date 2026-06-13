@@ -56,7 +56,7 @@ We are aware that the lack of unit tests is a shortcoming. Please don't comment 
 ### Build
 `cmake --build --preset conan-<release|debug>`
 
-> Due to provate dependency (VideoMaster SDK), this is intentional that no github action appears to build and test the code.
+> Due to private dependency (VideoMaster SDK), this is intentional that no github action appears to build and test the code.
 
 ## Coding Style
 

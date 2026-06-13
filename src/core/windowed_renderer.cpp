@@ -99,6 +99,7 @@ namespace Deltacast::VideoMonitor::Renderer
         {
             spdlog::error("Renderer exception: {}", e.what());
             m_thread_exception = std::current_exception();
+            m_monitor.release();
             m_monitor_ready = true;
             m_should_stop = true;
         }
@@ -106,6 +107,7 @@ namespace Deltacast::VideoMonitor::Renderer
         {
             spdlog::error("Renderer unexpected exception: {}", e.what());
             m_thread_exception = std::current_exception();
+            m_monitor.release();
             m_monitor_ready = true;
             m_should_stop = true;
         }

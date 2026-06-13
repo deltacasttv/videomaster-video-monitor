@@ -179,7 +179,7 @@ namespace Deltacast::VideoMonitor
 
                     renderer.render_buffer(buffer, buffer_size);
                 }
-                catch (Deltacast::Wrapper::RecoverableApiException& ex)
+                catch (const Deltacast::Wrapper::RecoverableApiException& ex)
                 {
                     spdlog::warn("Recoverable error while capturing video buffer: {}", ex.what());
                 }
