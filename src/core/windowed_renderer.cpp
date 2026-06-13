@@ -93,7 +93,7 @@ namespace Deltacast::VideoMonitor::Renderer
             m_monitor.release();
 
             // Only signal global stop if the window was closed by user.
-            // If render_loop ended due to m_stop being set (normal teardown),
+            // If render_loop ended because stop() was called (normal teardown),
             // don't propagate as application-wide stop request.
             if (m_monitor.window_request_close())
             {
