@@ -132,7 +132,7 @@ namespace Deltacast::VideoMonitor::Core
         {
             throw Deltacast::VideoMonitor::Exceptions::ConfigurationException(
                 "Explicit SPS media mode requires --ip-video-width, --ip-video-height, "
-                "--ip-bit-depth, --ip-framerate-num and --ip-framerate-den");
+                "--ip-video-bit-depth, --ip-video-framerate-num and --ip-video-framerate-den");
         }
 
         if (options.source_ip.has_value())
