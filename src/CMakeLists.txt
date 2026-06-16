@@ -7,7 +7,6 @@ configure_file(
     @ONLY
 )
 
-set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # project sources
@@ -32,6 +31,8 @@ set(${PROJECT_NAME}_INCLUDE_DIRECTORIES
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE ${${PROJECT_NAME}_INCLUDE_DIRECTORIES})
+
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 
 find_package(CLI11 REQUIRED)
 find_package(spdlog REQUIRED)

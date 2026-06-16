@@ -74,8 +74,10 @@ namespace Deltacast::VideoMonitor::Session
         m_cable_color_space = stream().cable_color_space();
         m_cable_sampling = stream().cable_sampling();
 
-        m_signal_characteristics = { m_active_width, m_active_height,
-                                     static_cast<BOOL32>(m_interlaced), m_framerate };
+        m_signal_characteristics = { .width = m_active_width,
+                                     .height = m_active_height,
+                                     .interlaced = static_cast<BOOL32>(m_interlaced),
+                                     .framerate = m_framerate };
 
         spdlog::info("Detected DV signal on RX{}: {}x{}, interlaced={}, framerate={}, "
                      "colorspace={}, sampling={}",

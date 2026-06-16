@@ -49,6 +49,7 @@ namespace Deltacast::VideoMonitor::Core
     {
         std::optional<uint32_t> width;
         std::optional<uint32_t> height;
+        std::optional<bool>     interlaced;
         std::optional<uint32_t> bit_depth;
         std::optional<uint32_t> framerate_numerator;
         std::optional<uint32_t> framerate_denominator;

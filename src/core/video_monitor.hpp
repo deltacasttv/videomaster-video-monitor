@@ -67,6 +67,7 @@ namespace Deltacast::VideoMonitor
 
         std::optional<uint32_t> m_ip_video_width;
         std::optional<uint32_t> m_ip_video_height;
+        std::optional<bool>     m_ip_video_interlaced;
         std::optional<uint32_t> m_ip_video_bit_depth;
         std::optional<uint32_t> m_ip_video_framerate_numerator;
         std::optional<uint32_t> m_ip_video_framerate_denominator;

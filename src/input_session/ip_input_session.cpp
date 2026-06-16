@@ -136,11 +136,12 @@ namespace Deltacast::VideoMonitor::Session
             {
                 const auto standard = static_cast<VHD_ST2110_20_VIDEO_STANDARD>(i);
 
-                spdlog::trace("Checking ST2110-20 video standard {} for compatibility with {}x{} "
+                spdlog::trace("Checking ST2110-20 video standard {} for compatibility with {}x{} {}"
                               "at {}/{} fps",
                               Deltacast::Wrapper::to_pretty_string(
                                   static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)),
                               media_configuration.width, media_configuration.height,
+                              media_configuration.interlaced ? "i" : "p",
                               media_configuration.framerate_numerator,
                               media_configuration.framerate_denominator);
 
@@ -197,6 +198,16 @@ namespace Deltacast::VideoMonitor::Session
                     continue;
                 }
 
+                if (characteristics.interlaced != media_configuration.interlaced)
+                {
+                    spdlog::trace(
+                        "ST2110-20 video standard {} does not match interlacing: {} vs {}",
+                        Deltacast::Wrapper::to_pretty_string(
+                            static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)),
+                        characteristics.interlaced, media_configuration.interlaced);
+                    continue;
+                }
+
                 spdlog::trace("ST2110-20 video standard {} is a candidate.",
                               Deltacast::Wrapper::to_pretty_string(
                                   static_cast<VHD_ST2110_20_VIDEO_STANDARD>(standard)));
@@ -206,8 +217,9 @@ namespace Deltacast::VideoMonitor::Session
             if (candidates.empty())
             {
                 throw Exceptions::ConfigurationException(
-                    fmt::format("No ST2110-20 video standard matches {}x{} at {}/{} fps",
+                    fmt::format("No ST2110-20 video standard matches {}x{} {} at {}/{} fps",
                                 media_configuration.width, media_configuration.height,
+                                media_configuration.interlaced ? "i" : "p",
                                 media_configuration.framerate_numerator,
                                 media_configuration.framerate_denominator));
             }
@@ -817,10 +829,11 @@ namespace Deltacast::VideoMonitor::Session
         m_video_characteristics = Deltacast::Wrapper::Helper::Ip::video_standard_to_characteristics(
             m_main_media.ST2110_20.VideoStandard);
 
-        spdlog::info("Detected ST2110 video standard {} ({}x{}, interlaced={})",
+        spdlog::info("Detected ST2110 video standard {} ({}x{}, interlaced={} {} fps)",
                      Deltacast::Wrapper::to_pretty_string(m_main_media.ST2110_20.VideoStandard),
                      m_video_characteristics.width, m_video_characteristics.height,
-                     static_cast<bool>(m_video_characteristics.interlaced));
+                     static_cast<bool>(m_video_characteristics.interlaced),
+                     m_video_characteristics.framerate);
 
         if (m_use_sps_stream)
         {

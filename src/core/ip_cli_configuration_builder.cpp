@@ -39,14 +39,16 @@ namespace Deltacast::VideoMonitor::Core
         auto has_any_explicit_media_core_option(const IpMediaCoreCliOptions& options) -> bool
         {
             return options.width.has_value() || options.height.has_value() ||
-                   options.bit_depth.has_value() || options.framerate_numerator.has_value() ||
+                   options.interlaced.has_value() || options.bit_depth.has_value() ||
+                   options.framerate_numerator.has_value() ||
                    options.framerate_denominator.has_value();
         }
 
         auto has_explicit_media_core(const IpMediaCoreCliOptions& options) -> bool
         {
             return options.width.has_value() && options.height.has_value() &&
-                   options.bit_depth.has_value() && options.framerate_numerator.has_value() &&
+                   options.interlaced.has_value() && options.bit_depth.has_value() &&
+                   options.framerate_numerator.has_value() &&
                    options.framerate_denominator.has_value();
         }
 
@@ -125,14 +127,16 @@ namespace Deltacast::VideoMonitor::Core
         {
             throw Deltacast::VideoMonitor::Exceptions::ConfigurationException(
                 "Explicit IP media mode requires --ip-video-width, --ip-video-height, "
-                "--ip-video-bit-depth, --ip-video-framerate-num and --ip-video-framerate-den");
+                "--ip-video-interlaced, --ip-video-bit-depth, --ip-video-framerate-num and "
+                "--ip-video-framerate-den");
         }
 
         if (has_sps_explicit_option && !has_explicit_media_core(options.core))
         {
             throw Deltacast::VideoMonitor::Exceptions::ConfigurationException(
                 "Explicit SPS media mode requires --ip-video-width, --ip-video-height, "
-                "--ip-video-bit-depth, --ip-video-framerate-num and --ip-video-framerate-den");
+                "--ip-video-interlaced, --ip-video-bit-depth, --ip-video-framerate-num and "
+                "--ip-video-framerate-den");
         }
 
         if (options.source_ip.has_value())
@@ -268,11 +272,15 @@ namespace Deltacast::VideoMonitor::Core
         }
         main_destination_config.udp_port = options.main.udp_port;
         main_filtering_config.payload_type = options.main.payload_type;
-        media_description.width = options.core.width.value();
-        media_description.height = options.core.height.value();
-        media_description.bit_depth = options.core.bit_depth.value();
-        media_description.framerate_numerator = options.core.framerate_numerator.value();
-        media_description.framerate_denominator = options.core.framerate_denominator.value();
+
+        media_description = {
+            .width = options.core.width.value(),
+            .height = options.core.height.value(),
+            .interlaced = options.core.interlaced.value(),
+            .framerate_numerator = options.core.framerate_numerator.value(),
+            .framerate_denominator = options.core.framerate_denominator.value(),
+            .bit_depth = options.core.bit_depth.value(),
+        };
 
         if (const auto filter_mode = source_filter_mode_from_cli(options.main.source_filter_mode);
             filter_mode.has_value())
