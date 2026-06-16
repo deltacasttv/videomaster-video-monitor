@@ -92,6 +92,38 @@ namespace Deltacast::VideoMonitor::Session
             return m_current_slot->video().buffer();
         }
 
+        virtual void set_field_merging_mode()
+        {
+            ensure_stream_is_prepared();
+            auto video_characteristics = get_video_characteristics();
+
+            if (video_characteristics.interlaced)
+            {
+                if (board().supports_field_merging())
+                {
+                    stream().enable_field_merge();
+                }
+                else
+                {
+                    spdlog::warn("Field merging mode is not supported on this board. Field merging "
+                                 "will not be enabled for interlaced video ({}x{} {}, "
+                                 "framerate={}) and will result in a two-plane output.",
+                                 video_characteristics.width, video_characteristics.height,
+                                 video_characteristics.interlaced ? "i" : "p",
+                                 video_characteristics.framerate);
+                }
+            }
+            else
+            {
+                spdlog::trace("Field merging mode is not enabled for progressive video ({}x{} {}, "
+                              "framerate={})",
+                              video_characteristics.width, video_characteristics.height,
+                              video_characteristics.interlaced ? "i" : "p",
+                              video_characteristics.framerate);
+                return;
+            }
+        }
+
      protected:
         std::unique_ptr<TStream>                      m_stream;
         decltype(std::declval<TStream&>().pop_slot()) m_current_slot;

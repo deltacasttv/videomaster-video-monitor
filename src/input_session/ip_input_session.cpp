@@ -861,6 +861,8 @@ namespace Deltacast::VideoMonitor::Session
 
         stream.buffer_queue().set_depth(buffer_queue_size);
         stream.set_buffer_packing(VHD_BUFPACK_VIDEO_YUV422_8);
+
+        set_field_merging_mode();
         spdlog::trace("Configured ST2110 buffer queue depth={} packing=YUV422_8",
                       buffer_queue_size);
     }

@@ -85,6 +85,8 @@ namespace Deltacast::VideoMonitor::Session
         stream.set_video_standard(m_video_standard);
         stream.set_interface(m_interface);
 
+        set_field_merging_mode();
+
         spdlog::debug("Configured SDI stream on RX{} with queue depth {}", this->stream_id(),
                       buffer_queue_size);
     }

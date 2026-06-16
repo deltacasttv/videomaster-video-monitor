@@ -101,6 +101,8 @@ namespace Deltacast::VideoMonitor::Session
         stream.set_cable_color_space(m_cable_color_space);
         stream.set_cable_sampling(m_cable_sampling);
 
+        set_field_merging_mode();
+
         spdlog::debug("Configured DV stream on RX{} with queue depth {}", this->stream_id(),
                       buffer_queue_size);
     }
