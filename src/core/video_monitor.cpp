@@ -195,10 +195,16 @@ namespace Deltacast::VideoMonitor
                     auto [buffer, buffer_size] = session->get_video_buffer();
 
                     renderer.render_buffer(buffer, buffer_size);
+                    #if defined(__APPLE__)
+                    renderer.render_iteration();
+                    #endif
                 }
                 catch (const Deltacast::Wrapper::RecoverableApiException& ex)
                 {
                     spdlog::warn("Recoverable error while capturing video buffer: {}", ex.what());
+                    #if defined(__APPLE__)
+                    renderer.render_iteration();
+                    #endif
                 }
                 catch (...)
                 {

@@ -55,6 +55,10 @@ namespace Deltacast::VideoMonitor::Renderer
 
         auto get_thread_exception() const -> std::exception_ptr { return m_thread_exception; }
 
+#if defined(__APPLE__)
+        void render_iteration();
+#endif
+
      private:
         std::string m_window_title;
         int         m_window_width;

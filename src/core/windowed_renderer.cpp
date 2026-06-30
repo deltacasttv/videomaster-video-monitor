@@ -52,6 +52,16 @@ namespace Deltacast::VideoMonitor::Renderer
     void WindowedRenderer::init(int image_width, int image_height,
                                 Deltacast::VideoViewer::InputFormat input_format)
     {
+#if defined(__APPLE__)
+        if (!m_monitor.init(m_window_width, m_window_height, m_window_title.c_str(), image_width,
+                            image_height, input_format))
+        {
+            throw Deltacast::VideoMonitor::Exceptions::RendererException(
+                "VideoViewer initialization failed");
+        }
+        m_monitor.start();
+        m_monitor_ready = true;
+#else
         if (m_monitor_thread.joinable())
         {
             stop();
@@ -74,6 +84,7 @@ namespace Deltacast::VideoMonitor::Renderer
             }
             std::rethrow_exception(m_thread_exception);
         }
+#endif
     }
 
     void WindowedRenderer::monitor(int image_width, int image_height,
@@ -121,14 +132,34 @@ namespace Deltacast::VideoMonitor::Renderer
     auto WindowedRenderer::stop() -> bool
     {
         m_monitor.stop();
+#if defined(__APPLE__)
+        if (m_monitor_ready)
+        {
+            m_monitor.release();
+            m_monitor_ready = false;
+        }
+#else
         if (m_monitor_thread.joinable())
         {
             m_monitor_thread.join();
             m_monitor_ready = false;
         }
-
+#endif
         return true;
     }
+
+#if defined(__APPLE__)
+    void WindowedRenderer::render_iteration()
+    {
+        m_monitor.process_escape_key();
+        m_monitor.render_iteration();
+        if (m_monitor.window_request_close())
+        {
+            spdlog::warn("Window has been closed");
+            m_should_stop = true;
+        }
+    }
+#endif
 
     void WindowedRenderer::render_buffer(BYTE* buffer, ULONG buffer_size)
     {
