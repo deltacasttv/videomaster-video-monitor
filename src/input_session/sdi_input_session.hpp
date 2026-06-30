@@ -19,6 +19,7 @@
 #include "shared_resources.hpp"
 
 #include <VideoMasterCppApi/helper/video.hpp>
+#include <VideoMasterCppApi/slot/sdi/sdi_slot.hpp>
 #include <VideoMasterCppApi/stream/sdi/sdi_stream.hpp>
 
 #if defined(__APPLE__)
@@ -35,7 +36,7 @@ namespace Deltacast::VideoMonitor::Session
     {
     };
 
-    class SdiInputSession : public LoopbackInputSession<Deltacast::Wrapper::SdiStream>
+    class SdiInputSession : public LoopbackInputSession<Deltacast::Wrapper::SdiStream, Deltacast::Wrapper::SdiSlot>
     {
      public:
         explicit SdiInputSession(const SdiInputSessionConfiguration&       config,

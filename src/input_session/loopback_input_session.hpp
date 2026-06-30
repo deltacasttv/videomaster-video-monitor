@@ -33,7 +33,7 @@ namespace Deltacast::VideoMonitor::Session
     {
     };
 
-    template <typename TStream>
+    template <typename TStream, typename TSlot>
     class LoopbackInputSession : public InputSession<TStream>
     {
      public:
@@ -41,6 +41,13 @@ namespace Deltacast::VideoMonitor::Session
                                       Deltacast::VideoMonitor::SharedResources& shared_resources)
             : InputSession<TStream>(config, shared_resources)
         {
+        }
+
+        auto get_video_buffer() -> std::pair<UBYTE*, ULONG> override
+        {
+            this->ensure_board_is_opened();
+            this->m_current_slot = this->stream().pop_slot();
+            return static_cast<TSlot&>(*this->m_current_slot).video().buffer();
         }
 
         virtual ~LoopbackInputSession() = default;

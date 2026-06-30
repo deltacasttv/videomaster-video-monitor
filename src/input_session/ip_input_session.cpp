@@ -1,4 +1,4 @@
-/*
+﻿/*
  * SPDX-FileCopyrightText: Copyright (c) DELTACAST.TV. All rights reserved.
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -198,7 +198,7 @@ namespace Deltacast::VideoMonitor::Session
                     continue;
                 }
 
-                if (characteristics.interlaced != media_configuration.interlaced)
+                if (static_cast<bool>(characteristics.interlaced) != media_configuration.interlaced)
                 {
                     spdlog::trace(
                         "ST2110-20 video standard {} does not match interlacing: {} vs {}",
@@ -606,7 +606,7 @@ namespace Deltacast::VideoMonitor::Session
 
     IpInputSession::IpInputSession(const IpInputSessionConfig&               config,
                                    Deltacast::VideoMonitor::SharedResources& shared_resources)
-        : InputSession<Deltacast::Wrapper::Ip2110Stream>(config, shared_resources),
+        : InputSession<Deltacast::Wrapper::StreamComponents::IpComponents::Ip2110VideoEssenceStream>(config, shared_resources),
           m_network_configuration(config.network_configuration),
           m_input_configuration(config.input_configuration)
     {
@@ -811,8 +811,8 @@ namespace Deltacast::VideoMonitor::Session
         };
         spdlog::trace("Opening ST2110-20 essence stream for RX{}", stream_id);
 
-        m_stream = std::make_unique<Deltacast::Wrapper::Ip2110Stream>(
-            board.ip().ip2110().open_essence_stream(VHD_ET_ST2110_20, VHD_RX_CHANNEL, stream_id));
+        m_stream = std::make_unique<Deltacast::Wrapper::StreamComponents::IpComponents::Ip2110VideoEssenceStream>(
+            board.ip().ip2110().video().open_essence_stream(VHD_RX_CHANNEL, stream_id));
 
         auto destination_ip_address = parse_sdp_ip_address(m_main_media.DestinationIP);
         spdlog::info("Configuring main ST2110 media: destination {}, "
@@ -822,9 +822,9 @@ namespace Deltacast::VideoMonitor::Session
         configure_destination(m_stream->main_stream(), board.ip().port(main_port_index), m_session,
                               m_main_media, destination_ip_address, main_payload_type);
 
-        m_stream->video().set_video_standard(m_main_media.ST2110_20.VideoStandard);
-        m_stream->video().set_sampling_rate(m_main_media.ST2110_20.Sampling);
-        m_stream->video().set_bit_depth(m_main_media.ST2110_20.Depth);
+        m_stream->set_video_standard(m_main_media.ST2110_20.VideoStandard);
+        m_stream->set_sampling_rate(m_main_media.ST2110_20.Sampling);
+        m_stream->set_bit_depth(m_main_media.ST2110_20.Depth);
 
         m_video_characteristics = Deltacast::Wrapper::Helper::Ip::video_standard_to_characteristics(
             m_main_media.ST2110_20.VideoStandard);
@@ -881,8 +881,8 @@ namespace Deltacast::VideoMonitor::Session
     {
         this->ensure_board_is_opened();
         this->m_current_slot = this->stream().pop_slot();
-        auto& slot = static_cast<Deltacast::Wrapper::Ip2110Slot&>(*this->m_current_slot);
-        return slot.video_essence().buffer();
+        auto& slot = static_cast<Deltacast::Wrapper::Ip2110VideoSlot&>(*this->m_current_slot);
+        return slot.buffer();
     }
 
     auto IpInputSession::get_video_characteristics()

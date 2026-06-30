@@ -19,6 +19,7 @@
 #include "shared_resources.hpp"
 
 #include <VideoMasterCppApi/helper/video.hpp>
+#include <VideoMasterCppApi/slot/dv/dv_slot.hpp>
 #include <VideoMasterCppApi/stream/dv/dv_stream.hpp>
 #if defined(__APPLE__)
 #include <VideoMasterHD/VideoMasterHD_Core.h>
@@ -34,7 +35,7 @@ namespace Deltacast::VideoMonitor::Session
     {
     };
 
-    class DvInputSession : public LoopbackInputSession<Deltacast::Wrapper::DvStream>
+    class DvInputSession : public LoopbackInputSession<Deltacast::Wrapper::DvStream, Deltacast::Wrapper::DvSlot>
     {
      public:
         explicit DvInputSession(const DvInputSessionConfiguration&        config,

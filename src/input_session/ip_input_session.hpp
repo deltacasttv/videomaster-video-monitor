@@ -16,7 +16,7 @@
 #pragma once
 #include <VideoMasterCppApi/helper/sdp.hpp>
 #include <VideoMasterCppApi/helper/video.hpp>
-#include <VideoMasterCppApi/stream/ip/st2110_stream.hpp>
+#include <VideoMasterCppApi/stream/ip/video.hpp>
 #if defined(__APPLE__)
 #include <VideoMasterHD/VideoMasterHD_Core.h>
 #include <VideoMasterHD/VideoMasterHD_SDP.h>
@@ -45,7 +45,7 @@ namespace Deltacast::VideoMonitor::Session
         std::optional<IpInputConfiguration>   input_configuration;
     };
 
-    class IpInputSession : public InputSession<Deltacast::Wrapper::Ip2110Stream>
+    class IpInputSession : public InputSession<Deltacast::Wrapper::StreamComponents::IpComponents::Ip2110VideoEssenceStream>
     {
      public:
         explicit IpInputSession(const IpInputSessionConfig&               config,

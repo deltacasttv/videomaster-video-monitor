@@ -85,12 +85,7 @@ namespace Deltacast::VideoMonitor::Session
             return input_has_changed;
         }
 
-        auto get_video_buffer() -> std::pair<UBYTE*, ULONG> override
-        {
-            this->ensure_board_is_opened();
-            m_current_slot = this->stream().pop_slot();
-            return m_current_slot->video().buffer();
-        }
+
 
         virtual void set_field_merging_mode()
         {
