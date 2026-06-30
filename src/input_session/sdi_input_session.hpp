@@ -36,7 +36,8 @@ namespace Deltacast::VideoMonitor::Session
     {
     };
 
-    class SdiInputSession : public LoopbackInputSession<Deltacast::Wrapper::SdiStream, Deltacast::Wrapper::SdiSlot>
+    class SdiInputSession
+        : public LoopbackInputSession<Deltacast::Wrapper::SdiStream, Deltacast::Wrapper::SdiSlot>
     {
      public:
         explicit SdiInputSession(const SdiInputSessionConfiguration&       config,

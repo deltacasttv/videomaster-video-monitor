@@ -85,8 +85,6 @@ namespace Deltacast::VideoMonitor::Session
             return input_has_changed;
         }
 
-
-
         virtual void set_field_merging_mode()
         {
             ensure_stream_is_prepared();

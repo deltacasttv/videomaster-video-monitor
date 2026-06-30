@@ -45,7 +45,9 @@ namespace Deltacast::VideoMonitor::Session
         std::optional<IpInputConfiguration>   input_configuration;
     };
 
-    class IpInputSession : public InputSession<Deltacast::Wrapper::StreamComponents::IpComponents::Ip2110VideoEssenceStream>
+    class IpInputSession
+        : public InputSession<
+              Deltacast::Wrapper::StreamComponents::IpComponents::Ip2110VideoEssenceStream>
     {
      public:
         explicit IpInputSession(const IpInputSessionConfig&               config,

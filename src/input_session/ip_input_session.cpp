@@ -606,7 +606,9 @@ namespace Deltacast::VideoMonitor::Session
 
     IpInputSession::IpInputSession(const IpInputSessionConfig&               config,
                                    Deltacast::VideoMonitor::SharedResources& shared_resources)
-        : InputSession<Deltacast::Wrapper::StreamComponents::IpComponents::Ip2110VideoEssenceStream>(config, shared_resources),
+        : InputSession<
+              Deltacast::Wrapper::StreamComponents::IpComponents::Ip2110VideoEssenceStream>(
+              config, shared_resources),
           m_network_configuration(config.network_configuration),
           m_input_configuration(config.input_configuration)
     {
@@ -811,7 +813,8 @@ namespace Deltacast::VideoMonitor::Session
         };
         spdlog::trace("Opening ST2110-20 essence stream for RX{}", stream_id);
 
-        m_stream = std::make_unique<Deltacast::Wrapper::StreamComponents::IpComponents::Ip2110VideoEssenceStream>(
+        m_stream = std::make_unique<
+            Deltacast::Wrapper::StreamComponents::IpComponents::Ip2110VideoEssenceStream>(
             board.ip().ip2110().video().open_essence_stream(VHD_RX_CHANNEL, stream_id));
 
         auto destination_ip_address = parse_sdp_ip_address(m_main_media.DestinationIP);
