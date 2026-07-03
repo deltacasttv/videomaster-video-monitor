@@ -13,12 +13,10 @@
  * limitations under the License.
  */
 
-#pragma once
+#include "shared_resources.hpp"
 
-/* clang-format off */
-#define VERMAJOR @CMAKE_PROJECT_VERSION_MAJOR@
-#define VERMINOR @CMAKE_PROJECT_VERSION_MINOR@
-#define VERPATCH @CMAKE_PROJECT_VERSION_PATCH@
-/* clang-format on */
-
-#define VERSTRING "@GIT_VERSION@"
+void Deltacast::VideoMonitor::SharedResources::reset()
+{
+    stop_is_requested = false;
+    incoming_signal_changed = false;
+}

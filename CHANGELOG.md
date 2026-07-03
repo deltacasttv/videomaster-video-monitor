@@ -3,6 +3,7 @@
 ## Added
 
 - Support for DELTA-hmi-e 40 [PR #9]
+- Support for DELTA-IP25-44-elp [PR #12]
 
 # 2.0.0
 

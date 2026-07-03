@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  clang-format:
+    name: Clang Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lsb-release wget
+          # Use official LLVM install script to configure repos
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22 all
+          rm llvm.sh
+          # Install clang-format-22 explicitly
+          sudo apt-get install -y clang-format-22
+
+      - name: C++ format check
+        shell: bash
+        run: |
+          set -euo pipefail
+          dirs=()
+          for d in operators applications tests src; do
+            if [ -d "$d" ]; then
+              dirs+=("$d")
+            fi
+          done
+
+          if [ ${#dirs[@]} -eq 0 ]; then
+            echo "No source directories found for clang-format check"
+            exit 0
+          fi
+
+          find "${dirs[@]}" -type f \( -name '*.cpp' -o -name '*.hpp' \) ! -path 'src/version.hpp' -print0 \
+            | xargs -0 -r clang-format-22 --dry-run --Werror
