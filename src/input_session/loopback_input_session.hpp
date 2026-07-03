@@ -47,7 +47,7 @@ namespace Deltacast::VideoMonitor::Session
         {
             this->ensure_board_is_opened();
             this->m_current_slot = this->stream().pop_slot();
-            return static_cast<TSlot&>(*this->m_current_slot).video().buffer();
+            return (static_cast<TSlot&>(*this->m_current_slot)).video().buffer();
         }
 
         virtual ~LoopbackInputSession() = default;
