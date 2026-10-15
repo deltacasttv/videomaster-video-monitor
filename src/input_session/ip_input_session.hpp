@@ -71,6 +71,8 @@ namespace Deltacast::VideoMonitor::Session
         using MulticastGroups = std::vector<std::pair<uint32_t, ipaddress::ip_address>>;
 
         void join_multicast_group(const VHD_SDP_IP_ADDRESS& ip_address_struct, uint32_t port_index);
+        // Logged once per interruption of the frames, not on every slot timeout.
+        void report_missing_frames();
 
         std::optional<IpNetworkConfiguration> m_network_configuration;
         std::optional<IpInputConfiguration>   m_input_configuration;
@@ -80,5 +82,6 @@ namespace Deltacast::VideoMonitor::Session
         std::shared_ptr<MulticastGroups> m_multicast_groups = std::make_shared<MulticastGroups>();
         Deltacast::Wrapper::Helper::VideoCharacteristicsFractionalFramerate m_video_characteristics;
         bool m_use_sps_stream{ false };
+        bool m_missing_frames_reported{ false };
     };
 }  // namespace Deltacast::VideoMonitor::Session

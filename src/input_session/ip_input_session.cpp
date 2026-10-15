@@ -893,9 +893,44 @@ namespace Deltacast::VideoMonitor::Session
     auto IpInputSession::get_video_buffer() -> std::pair<UBYTE*, ULONG>
     {
         this->ensure_board_is_opened();
-        this->m_current_slot = this->stream().pop_slot();
+        try
+        {
+            this->m_current_slot = this->stream().pop_slot();
+        }
+        catch (const Deltacast::Wrapper::RecoverableApiException&)
+        {
+            report_missing_frames();
+            throw;
+        }
+        m_missing_frames_reported = false;
         auto& slot = static_cast<Deltacast::Wrapper::Ip2110VideoSlot&>(*this->m_current_slot);
         return slot.buffer();
+    }
+
+    void IpInputSession::report_missing_frames()
+    {
+        if (m_missing_frames_reported)
+        {
+            return;
+        }
+        m_missing_frames_reported = true;
+
+        auto& stream = this->stream();
+        if (stream.main_stream().datagram_count() == 0)
+        {
+            spdlog::warn("No packet received on the main stream: check the destination address, "
+                         "UDP port, payload type, source filter and network configuration");
+        }
+        else
+        {
+            spdlog::warn("Packets are received on the main stream but no frame is complete: the "
+                         "configured format (resolution, frame rate, interlacing, bit depth) "
+                         "probably does not match the stream");
+        }
+        if (m_use_sps_stream && stream.sps_stream().datagram_count() == 0)
+        {
+            spdlog::warn("No packet received on the SPS stream: the redundant path is not working");
+        }
     }
 
     auto IpInputSession::get_video_characteristics()

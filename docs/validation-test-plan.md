@@ -114,7 +114,7 @@ C1 to C11 and C17 to C27 need no signal; C7, C8, C15 and C16 need a board.
 | IP7 | IP channel without `--sdp-file` nor explicit options | "Either SDP file path or IP media configuration must be provided"; exit 1 |
 | IP8 | Explicit mode, main only (README command) | Same as IP1 |
 | IP9 | Explicit mode, main and SPS | Same as IP2 |
-| IP10 | Explicit, `--ip-main-payload-type` omitted, then wrong | Default 96 used; wrong type gives no picture, no crash |
+| IP10 | Explicit, `--ip-main-payload-type` omitted, then wrong | Default 96 used; wrong type gives no picture, no crash, and one "No packet received on the main stream" warning |
 | IP11 | Explicit, `--ip-main-udp-port` omitted | Picture |
 | IP12 | Explicit unicast: `--ip-main-destination <board IP>` with `--ip-source-ip <sender>`, then without it | Picture; without it, "Source IP address is unspecified" warning and picture |
 | IP13 | Explicit, no `--ip-main-destination` | Picture |
@@ -123,7 +123,7 @@ C1 to C11 and C17 to C27 need no signal; C7, C8, C15 and C16 need a board.
 | IP16 | Source filter with an IPv6 destination | "Source filtering is only supported for IPv4 addresses"; exit 1 |
 | IP17 | Frame rate notations `30/1`, `30000/1000`, `60/2`, `60000/1001`, `30000/1001` | Each selects the sender's standard |
 | IP18 | Format matching no standard (`31/1`, 1921x1080) | "No ST2110-20 video standard matches ..."; exit 1 |
-| IP19 | Explicit format different from the stream (1080p25 on 1080p30, 8-bit on 10-bit) | No crash; wrong or no picture is acceptable |
+| IP19 | Explicit format different from the stream (1080p25 on 1080p30, 8-bit on 10-bit) | No crash; wrong or no picture is acceptable; without picture, one "Packets are received on the main stream but no frame is complete" warning |
 | IP20 | `--ip-video-bit-depth` `8` and `10` on matching streams, then `12` | Picture; picture; "Unsupported bit depth: 12" |
 | IP21 | 1080i50, 1080i59.94 through SDP and through `--ip-video-interlaced 1` | Same as SDI3; on a board without field merging, "Interlaced fields are received one after the other" and a full-height picture. Record which rate notation (frame or field rate) selects the standard |
 | IP22 | `--ip-address`, `--ip-subnet`, `--ip-gateway` | Port configured with these values (trace log); picture |
