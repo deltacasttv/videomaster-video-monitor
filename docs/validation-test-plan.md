@@ -65,11 +65,11 @@ C1 to C11 and C17 to C27 need no signal; C7, C8, C15 and C16 need a board.
 | G3 | Ctrl+C while rendering | "Stop requested, leaving monitor loop"; exit 0; no SDK error; next run starts normally |
 | G4 | Close the window, then Esc on a new run | Exit 0 |
 | G5 | Unplug the input while rendering, replug the same signal | No crash; picture resumes |
-| G6 | Change the source format while rendering | SDI/HDMI: "Incoming signal changed on RX<n>, restarting capture cycle", window reopened at the new format. IP: not detected, no crash |
+| G6 | Change the source format while rendering (SDI, HDMI) | "Incoming signal changed on RX<n>, restarting capture cycle", window reopened at the new format. Not applicable to IP: the format comes from the SDP or the options, a sender changing it is not a supported scenario (IP19 covers a mismatching configuration) |
 | G7 | Board with loopback (SDI/HDMI): watch the loop-through output before, during and after a run | Loopback disabled while capturing, restored after exit (normal, Ctrl+C, error) |
 | G8 | Second instance on the same board and RX | Second one fails cleanly; first keeps rendering |
 | G9 | Two instances on two RX of the same board | Both render |
-| G10 | `main` build vs branch build, same signal and channel (SDI, HDMI), default log level | Same picture, window size (half the resolution) and drop rate; same board details and detected signal with readable names. Known differences: spdlog output format; API version and device count only at trace level; invalid device exits with 1 instead of -1 |
+| G10 | `main` build vs branch build, same signal and channel, default log level. `main` is built against VideoMaster 6.35 (its C++ wrapper API changed since), then run against the current SDK. HDMI only on a bench whose SDI board has SDI/ASI channels, which `main` does not support | Same picture, window size (half the resolution) and drop rate; same board details and detected signal with readable names. Known differences: spdlog output format; API version and device count only at trace level; invalid device exits with 1 instead of -1 |
 | G11 | 30 min run at the highest supported format | Drops stay under 1%, no memory growth, no crash |
 | G12 | Resize, minimize, move the window to another screen | Picture keeps updating, no extra drop |
 

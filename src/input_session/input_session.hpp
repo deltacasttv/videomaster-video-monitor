@@ -133,6 +133,13 @@ namespace Deltacast::VideoMonitor::Session
             return *m_stream;
         }
 
+        // A capture cycle restart reopens the stream: the previous one must be closed first.
+        void release_stream()
+        {
+            m_current_slot.reset();
+            m_stream.reset();
+        }
+
         void ensure_stream_is_prepared() const
         {
             if (!m_stream)

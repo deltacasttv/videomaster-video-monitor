@@ -46,6 +46,7 @@ namespace Deltacast::VideoMonitor::Session
     {
         auto& board = this->board();
         spdlog::trace("Preparing DV stream on RX{}", this->stream_id());
+        release_stream();
         disable_loopback();
 
         m_stream = std::make_unique<Deltacast::Wrapper::DvStream>(board.dv().open_stream(

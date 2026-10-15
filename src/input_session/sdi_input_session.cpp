@@ -46,6 +46,7 @@ namespace Deltacast::VideoMonitor::Session
     {
         auto& board = this->board();
         spdlog::trace("Preparing SDI stream on RX{}", this->stream_id());
+        this->release_stream();
         this->disable_loopback();
 
         m_stream = std::make_unique<Deltacast::Wrapper::SdiStream>(board.sdi().open_stream(
