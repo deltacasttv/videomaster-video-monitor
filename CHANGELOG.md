@@ -3,7 +3,7 @@
 ## Added
 
 - Support for DELTA-hmi-e 40 [PR #9]
-- Support for DELTA-IP25-44-elp [PR #12]
+- Support for DELTA-IP25-44-elp [PR #14]
 - Support for 3G-SDI/ASI and 12G-SDI/ASI channels, as SDI inputs
 
 # 2.0.0
