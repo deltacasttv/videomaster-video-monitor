@@ -50,7 +50,7 @@ namespace Deltacast::VideoMonitor::Renderer
 
         void init(int image_width, int image_height,
                   Deltacast::VideoViewer::InputFormat input_format);
-        void render_buffer(BYTE* buffer, ULONG buffer_size);
+        void render_buffer(BYTE* buffer, ULONG buffer_size, bool fields_are_sequential);
         auto stop() -> bool;
 
         auto get_thread_exception() const -> std::exception_ptr { return m_thread_exception; }
@@ -64,6 +64,7 @@ namespace Deltacast::VideoMonitor::Renderer
         int         m_window_width;
         int         m_window_height;
         int         m_framerate_ms;
+        int         m_image_height = 0;
 
         Deltacast::VideoViewer m_monitor;
         std::thread            m_monitor_thread;

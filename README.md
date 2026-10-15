@@ -24,14 +24,9 @@ We recommend using Conan 2.x to retrieve those dependencies:
 
     conan install . -b missing
 
-## Dependency compatibility
+## video-viewer
 
-The table below summarizes the expected compatibility between `video-viewer` and the VideoMaster SDK.
-
-| `video-viewer` version | Supported VideoMaster SDK versions |
-| --- | --- |
-| `>=2.0.0, <3.0.0` | `>=6.30` and `<6.35.1 beta` |
-| `3.0.0` | `>=6.35.1 beta` |
+The rendering window comes from `video-viewer` 2.0.0, a git submodule in `deps/video-viewer`. It does not depend on the VideoMaster SDK.
 
 ## VideoMaster SDK
 

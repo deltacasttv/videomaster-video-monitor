@@ -36,6 +36,20 @@ namespace Deltacast::VideoMonitor::Renderer
     namespace
     {
         constexpr int monitor_wait_timeout_ms = 100;
+
+        // Top-field lines come first, then bottom-field lines; the viewer expects them interleaved.
+        void interleave_fields(uint8_t* destination, const BYTE* source, uint64_t size, int height)
+        {
+            const auto  line_size = size / static_cast<uint64_t>(height);
+            const auto  field_lines = static_cast<uint64_t>(height) / 2;
+            const auto* bottom_field = source + field_lines * line_size;
+            for (uint64_t line = 0; line < field_lines; ++line)
+            {
+                memcpy(destination + (2 * line) * line_size, source + line * line_size, line_size);
+                memcpy(destination + (2 * line + 1) * line_size, bottom_field + line * line_size,
+                       line_size);
+            }
+        }
     }  // namespace
     WindowedRenderer::WindowedRenderer(const Config& config, std::atomic_bool& stop_is_requested)
         : m_window_title(config.window_title), m_window_width(config.window_width),
@@ -52,6 +66,7 @@ namespace Deltacast::VideoMonitor::Renderer
     void WindowedRenderer::init(int image_width, int image_height,
                                 Deltacast::VideoViewer::InputFormat input_format)
     {
+        m_image_height = image_height;
 #if defined(__APPLE__)
         if (!m_monitor.init(m_window_width, m_window_height, m_window_title.c_str(), image_width,
                             image_height, input_format))
@@ -101,12 +116,13 @@ namespace Deltacast::VideoMonitor::Renderer
 
             m_monitor_ready = true;
             m_monitor.render_loop(m_framerate_ms);
-            m_monitor.release();
-
             // Only signal global stop if the window was closed by user.
             // If render_loop ended because stop() was called (normal teardown),
             // don't propagate as application-wide stop request.
-            if (m_monitor.window_request_close())
+            const bool closed_by_user = m_monitor.window_request_close();
+            m_monitor.release();
+
+            if (closed_by_user)
             {
                 m_should_stop = true;
             }
@@ -161,7 +177,8 @@ namespace Deltacast::VideoMonitor::Renderer
     }
 #endif
 
-    void WindowedRenderer::render_buffer(BYTE* buffer, ULONG buffer_size)
+    void WindowedRenderer::render_buffer(BYTE* buffer, ULONG buffer_size,
+                                         bool fields_are_sequential)
     {
         uint8_t* monitor_data = nullptr;
         uint64_t monitor_data_size = 0;
@@ -169,7 +186,16 @@ namespace Deltacast::VideoMonitor::Renderer
         {
             if (buffer != nullptr && monitor_data != nullptr && monitor_data_size == buffer_size)
             {
-                memcpy(monitor_data, buffer, monitor_data_size);
+                const bool can_interleave = m_image_height > 0 && m_image_height % 2 == 0 &&
+                                            monitor_data_size % m_image_height == 0;
+                if (fields_are_sequential && can_interleave)
+                {
+                    interleave_fields(monitor_data, buffer, monitor_data_size, m_image_height);
+                }
+                else
+                {
+                    memcpy(monitor_data, buffer, monitor_data_size);
+                }
             }
             m_monitor.unlock_data();
         }

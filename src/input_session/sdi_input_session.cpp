@@ -23,6 +23,7 @@
 #include <VideoMasterCppApi/helper/sdi.hpp>
 #include <VideoMasterCppApi/helper/video.hpp>
 #include <VideoMasterCppApi/stream/sdi/sdi_stream.hpp>
+#include <VideoMasterCppApi/to_string.hpp>
 #if defined(__APPLE__)
 #include <VideoMasterHD/VideoMasterHD_Core.h>
 #include <VideoMasterHD/VideoMasterHD_Sdi.h>
@@ -72,13 +73,16 @@ namespace Deltacast::VideoMonitor::Session
         m_interface = m_stream->interface();
 
         spdlog::info("Detected SDI signal on RX{}: standard={}, clock_divisor={}, interface={}",
-                     this->stream_id(), static_cast<int>(m_video_standard),
-                     static_cast<int>(m_clock_divisor), static_cast<int>(m_interface));
+                     this->stream_id(), Deltacast::Wrapper::to_pretty_string(m_video_standard),
+                     Deltacast::Wrapper::to_pretty_string(m_clock_divisor),
+                     Deltacast::Wrapper::to_pretty_string(m_interface));
     }
 
     void SdiInputSession::configure_video_stream()
     {
         auto& stream = this->stream();
+
+        set_sdi_mode_on_asi_channel();
 
         stream.buffer_queue().set_depth(buffer_queue_size);
         stream.set_buffer_packing(VHD_BUFPACK_VIDEO_YUV422_8);
@@ -102,14 +106,27 @@ namespace Deltacast::VideoMonitor::Session
         {
             spdlog::debug("SDI signal change details on RX{}: standard {}->{}, clock_divisor "
                           "{}->{}, interface {}->{}",
-                          this->stream_id(), static_cast<int>(m_video_standard),
-                          static_cast<int>(stream.video_standard()),
-                          static_cast<int>(m_clock_divisor),
-                          static_cast<int>(stream.clock_divisor()), static_cast<int>(m_interface),
-                          static_cast<int>(stream.interface()));
+                          this->stream_id(), Deltacast::Wrapper::to_pretty_string(m_video_standard),
+                          Deltacast::Wrapper::to_pretty_string(stream.video_standard()),
+                          Deltacast::Wrapper::to_pretty_string(m_clock_divisor),
+                          Deltacast::Wrapper::to_pretty_string(stream.clock_divisor()),
+                          Deltacast::Wrapper::to_pretty_string(m_interface),
+                          Deltacast::Wrapper::to_pretty_string(stream.interface()));
         }
 
         return video_standard_changed || clock_divisor_changed || interface_changed;
+    }
+
+    void SdiInputSession::set_sdi_mode_on_asi_channel()
+    {
+        auto&      rx = this->board().rx(this->stream_id());
+        const auto channel_type = rx.type();
+        if (channel_type == VHD_CHNTYPE_3GSDI_ASI || channel_type == VHD_CHNTYPE_12GSDI_ASI)
+        {
+            rx.set_mode(VHD_CHANNEL_MODE_SDI);
+            spdlog::debug("Set {} RX{} to SDI mode",
+                          Deltacast::Wrapper::to_pretty_string(channel_type), this->stream_id());
+        }
     }
 
     auto SdiInputSession::get_video_characteristics()

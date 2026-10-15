@@ -69,7 +69,7 @@ C1 to C11 and C17 to C27 need no signal; C7, C8, C15 and C16 need a board.
 | G7 | Board with loopback (SDI/HDMI): watch the loop-through output before, during and after a run | Loopback disabled while capturing, restored after exit (normal, Ctrl+C, error) |
 | G8 | Second instance on the same board and RX | Second one fails cleanly; first keeps rendering |
 | G9 | Two instances on two RX of the same board | Both render |
-| G10 | `main` build vs branch build, same signal and channel (SDI, HDMI), default log level | Same picture, window size (half the resolution) and drop rate; same information printed (API version, board details, detected signal with readable names). Known differences: spdlog output format, invalid device exits with 1 instead of -1 |
+| G10 | `main` build vs branch build, same signal and channel (SDI, HDMI), default log level | Same picture, window size (half the resolution) and drop rate; same board details and detected signal with readable names. Known differences: spdlog output format; API version and device count only at trace level; invalid device exits with 1 instead of -1 |
 | G11 | 30 min run at the highest supported format | Drops stay under 1%, no memory growth, no crash |
 | G12 | Resize, minimize, move the window to another screen | Picture keeps updating, no extra drop |
 
@@ -77,10 +77,10 @@ C1 to C11 and C17 to C27 need no signal; C7, C8, C15 and C16 need a board.
 
 | Test | Scenario | Expected |
 |---|---|---|
-| SDI1 | 1080p50, 1080p59.94, 1080p60 | Picture correct; "Detected SDI signal on RX<n>" then "Rendering 1920x1080 stream (interlaced=false, ...)" |
+| SDI1 | 1080p50, 1080p59.94, 1080p60, also on a 3G-SDI/ASI or 12G-SDI/ASI channel | Picture correct; "Detected SDI signal on RX<n>" with readable standard, clock divisor and interface names, then "Rendering 1920x1080 stream (interlaced=false, ...)" |
 | SDI2 | 720p50, 720p59.94 | Same as SDI1 |
 | SDI3 | 1080i50, 1080i59.94 on a board supporting field merging | "interlaced=true", no field merging warning, full-height frame; combing on motion is expected (video-viewer#48) |
-| SDI4 | Interlaced signal on a board without field merging | "Field merging mode is not supported on this board" warning; fields shown stacked (video-viewer#48); no crash |
+| SDI4 | Interlaced signal on a board without field merging | "Field merging mode is not supported on this board" warning; picture shown as the board delivers it (fields not reordered on SDI and HDMI, like the FFmpeg demuxer); no crash |
 | SDI5 | 3G-A 1080p50/60, 3G-B if the source can | Picture correct |
 | SDI6 | 12G 2160p50/59.94 | Picture correct, 1920x1080 window, drops under 1% |
 | SDI7 | SD 576i50, 480i59.94 | Picture correct, no shear |
@@ -125,7 +125,7 @@ C1 to C11 and C17 to C27 need no signal; C7, C8, C15 and C16 need a board.
 | IP18 | Format matching no standard (`31/1`, 1921x1080) | "No ST2110-20 video standard matches ..."; exit 1 |
 | IP19 | Explicit format different from the stream (1080p25 on 1080p30, 8-bit on 10-bit) | No crash; wrong or no picture is acceptable |
 | IP20 | `--ip-video-bit-depth` `8` and `10` on matching streams, then `12` | Picture; picture; "Unsupported bit depth: 12" |
-| IP21 | 1080i50, 1080i59.94 through SDP and through `--ip-video-interlaced 1` | Same as SDI3; record which rate notation (frame or field rate) selects the standard |
+| IP21 | 1080i50, 1080i59.94 through SDP and through `--ip-video-interlaced 1` | Same as SDI3; on a board without field merging, "Interlaced fields are received one after the other" and a full-height picture. Record which rate notation (frame or field rate) selects the standard |
 | IP22 | `--ip-address`, `--ip-subnet`, `--ip-gateway` | Port configured with these values (trace log); picture |
 | IP23 | `--ip-dhcp` with a DHCP server, then without | "DHCP lease acquired"; without server, "Timed out waiting for DHCP to assign an IP address" after 10 s, exit 1 |
 | IP24 | SPS port static (`--ip-sps-address`, `--ip-sps-subnet`) and DHCP (`--ip-sps-dhcp`), with an SPS stream | SPS port configured; SPS reception works |

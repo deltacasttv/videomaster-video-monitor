@@ -738,7 +738,7 @@ namespace Deltacast::VideoMonitor::Session
             port.multicast().join(to_ipv6_bytes(ip_address));
         }
 
-        m_multicast_groups.emplace_back(port_index, ip_address);
+        m_multicast_groups->emplace_back(port_index, ip_address);
         spdlog::trace("Joined multicast group {} on port {}", ip_address.to_string(), port_index);
     }
 
@@ -746,25 +746,27 @@ namespace Deltacast::VideoMonitor::Session
     {
         spdlog::trace("Opening IP board {} for RX{}", this->device_id(), this->stream_id());
         this->m_board.reset();
-        m_multicast_groups.clear();
-
-        this->m_board = std::make_unique<Deltacast::Wrapper::Board>(Deltacast::Wrapper::Board::open(
-            this->device_id(),
-            [&](auto& board)
+        // Shared with the close callback, which runs after this class's members are destroyed.
+        m_multicast_groups = std::make_shared<MulticastGroups>();
+        auto leave_multicast_groups =
+            [groups = m_multicast_groups](Deltacast::Wrapper::Board& board)
+        {
+            for (const auto& [port_index, group] : *groups)
             {
-                for (const auto& [port_index, group] : m_multicast_groups)
+                auto& port = board.ip().port(port_index);
+                if (group.is_v6())
                 {
-                    auto& port = board.ip().port(port_index);
-                    if (group.is_v6())
-                    {
-                        port.multicast().leave(to_ipv6_bytes(group));
-                    }
-                    else if (group.is_v4())
-                    {
-                        port.multicast().leave(group.to_uint32());
-                    }
+                    port.multicast().leave(to_ipv6_bytes(group));
                 }
-            }));
+                else if (group.is_v4())
+                {
+                    port.multicast().leave(group.to_uint32());
+                }
+            }
+        };
+
+        this->m_board = std::make_unique<Deltacast::Wrapper::Board>(
+            Deltacast::Wrapper::Board::open(this->device_id(), leave_multicast_groups));
 
         spdlog::debug("Configuring Main port {}", main_port_index);
         if (m_network_configuration.has_value() && m_network_configuration->has_main)
@@ -866,6 +868,14 @@ namespace Deltacast::VideoMonitor::Session
         stream.set_buffer_packing(VHD_BUFPACK_VIDEO_YUV422_8);
 
         set_field_merging_mode();
+        m_fields_are_sequential = static_cast<bool>(m_video_characteristics.interlaced) &&
+                                  !this->board().supports_field_merging();
+        if (m_fields_are_sequential)
+        {
+            spdlog::info("Interlaced fields are received one after the other on RX{}; they are "
+                         "interleaved before display",
+                         this->stream_id());
+        }
         spdlog::trace("Configured ST2110 buffer queue depth={} packing=YUV422_8",
                       buffer_queue_size);
     }

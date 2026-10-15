@@ -52,6 +52,8 @@ namespace Deltacast::VideoMonitor::Session
         auto has_video_input_changed() -> bool override;
 
      private:
+        void set_sdi_mode_on_asi_channel();
+
         VHD_VIDEOSTANDARD m_video_standard{};
         VHD_CLOCKDIVISOR  m_clock_divisor{};
         VHD_INTERFACE     m_interface{};

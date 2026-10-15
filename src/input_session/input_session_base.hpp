@@ -16,6 +16,7 @@
 #pragma once
 
 #include "exceptions.hpp"
+#include "helper.hpp"
 #include "shared_resources.hpp"
 
 #include <VideoMasterCppApi/board/board.hpp>
@@ -28,6 +29,8 @@
 #include <cstdint>
 #include <fmt/format.h>
 #include <memory>
+#include <sstream>
+#include <string>
 #include <utility>
 
 namespace Deltacast::VideoMonitor::Session
@@ -60,8 +63,19 @@ namespace Deltacast::VideoMonitor::Session
             -> Deltacast::Wrapper::Helper::VideoCharacteristics = 0;
         virtual auto get_video_slots_statistics() -> std::pair<ULONG, ULONG> = 0;
 
+        auto board_description() -> std::string
+        {
+            std::ostringstream description;
+            ::operator<<(description, board());
+            return description.str();
+        }
+
+        auto fields_are_sequential() const -> bool { return m_fields_are_sequential; }
+
      protected:
         std::unique_ptr<Deltacast::Wrapper::Board> m_board;
+        // Interlaced buffers holding all top-field lines, then all bottom-field lines.
+        bool m_fields_are_sequential = false;
 
         auto device_id() const -> uint32_t { return m_device_id; }
 

@@ -28,6 +28,7 @@
 #include <filesystem>
 #include <ipaddress/ip-any-address.hpp>
 #include <ipaddress/ipaddress.hpp>
+#include <memory>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -67,14 +68,16 @@ namespace Deltacast::VideoMonitor::Session
         auto has_video_input_changed() -> bool override;
 
      private:
+        using MulticastGroups = std::vector<std::pair<uint32_t, ipaddress::ip_address>>;
+
         void join_multicast_group(const VHD_SDP_IP_ADDRESS& ip_address_struct, uint32_t port_index);
 
-        std::optional<IpNetworkConfiguration>                               m_network_configuration;
-        std::optional<IpInputConfiguration>                                 m_input_configuration;
-        VHD_SDP_SESSION                                                     m_session = {};
-        VHD_SDP_MEDIA                                                       m_main_media = {};
-        VHD_SDP_MEDIA                                                       m_sps_media = {};
-        std::vector<std::pair<uint32_t, ipaddress::ip_address>>             m_multicast_groups;
+        std::optional<IpNetworkConfiguration> m_network_configuration;
+        std::optional<IpInputConfiguration>   m_input_configuration;
+        VHD_SDP_SESSION                       m_session = {};
+        VHD_SDP_MEDIA                         m_main_media = {};
+        VHD_SDP_MEDIA                         m_sps_media = {};
+        std::shared_ptr<MulticastGroups> m_multicast_groups = std::make_shared<MulticastGroups>();
         Deltacast::Wrapper::Helper::VideoCharacteristicsFractionalFramerate m_video_characteristics;
         bool m_use_sps_stream{ false };
     };

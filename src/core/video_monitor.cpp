@@ -146,9 +146,11 @@ namespace Deltacast::VideoMonitor
     {
         spdlog::trace("Starting monitor loop on device {} input {}", m_device_id, m_stream_id);
 
-        spdlog::debug("Opening device {}", m_device_id);
+        spdlog::info("Opening device {}", m_device_id);
         session->open_board();
-        spdlog::trace("Opened device {}", m_device_id);
+        auto board_description = session->board_description();
+        board_description.erase(board_description.find_last_not_of('\n') + 1);
+        spdlog::info("Opened device {}:\n{}", m_device_id, board_description);
 
         while (!m_shared_resources.stop_is_requested)
         {
@@ -194,7 +196,7 @@ namespace Deltacast::VideoMonitor
                 {
                     auto [buffer, buffer_size] = session->get_video_buffer();
 
-                    renderer.render_buffer(buffer, buffer_size);
+                    renderer.render_buffer(buffer, buffer_size, session->fields_are_sequential());
 #if defined(__APPLE__)
                     renderer.render_iteration();
 #endif

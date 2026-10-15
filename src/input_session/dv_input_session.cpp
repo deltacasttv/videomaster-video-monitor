@@ -23,6 +23,7 @@
 #include <VideoMasterCppApi/helper/dv.hpp>
 #include <VideoMasterCppApi/helper/video.hpp>
 #include <VideoMasterCppApi/stream/dv/dv_stream.hpp>
+#include <VideoMasterCppApi/to_string.hpp>
 #if defined(__APPLE__)
 #include <VideoMasterHD/VideoMasterHD_Core.h>
 #include <VideoMasterHD/VideoMasterHD_Dv.h>
@@ -81,9 +82,9 @@ namespace Deltacast::VideoMonitor::Session
 
         spdlog::info("Detected DV signal on RX{}: {}x{}, interlaced={}, framerate={}, "
                      "colorspace={}, sampling={}",
-                     this->stream_id(), m_active_width, m_active_height, m_interlaced,
-                     static_cast<int>(m_framerate), static_cast<int>(m_cable_color_space),
-                     static_cast<int>(m_cable_sampling));
+                     this->stream_id(), m_active_width, m_active_height, m_interlaced, m_framerate,
+                     Deltacast::Wrapper::to_pretty_string(m_cable_color_space),
+                     Deltacast::Wrapper::to_pretty_string(m_cable_sampling));
     }
 
     void DvInputSession::configure_video_stream()
@@ -123,12 +124,12 @@ namespace Deltacast::VideoMonitor::Session
             spdlog::debug("DV signal change details on RX{}: {}x{}->{}x{}, interlaced {}->{}, "
                           "framerate {}->{}, colorspace {}->{}, sampling {}->{}",
                           this->stream_id(), m_active_width, m_active_height, stream.active_width(),
-                          stream.active_height(), m_interlaced, stream.interlaced(),
-                          static_cast<int>(m_framerate), static_cast<int>(stream.frame_rate()),
-                          static_cast<int>(m_cable_color_space),
-                          static_cast<int>(stream.cable_color_space()),
-                          static_cast<int>(m_cable_sampling),
-                          static_cast<int>(stream.cable_sampling()));
+                          stream.active_height(), m_interlaced, stream.interlaced(), m_framerate,
+                          stream.frame_rate(),
+                          Deltacast::Wrapper::to_pretty_string(m_cable_color_space),
+                          Deltacast::Wrapper::to_pretty_string(stream.cable_color_space()),
+                          Deltacast::Wrapper::to_pretty_string(m_cable_sampling),
+                          Deltacast::Wrapper::to_pretty_string(stream.cable_sampling()));
         }
 
         return active_width_changed || active_height_changed || interlaced_changed ||

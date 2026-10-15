@@ -89,6 +89,8 @@ namespace Deltacast::VideoMonitor::Session
         case VHD_CHNTYPE_HDSDI:
         case VHD_CHNTYPE_3GSDI:
         case VHD_CHNTYPE_12GSDI:
+        case VHD_CHNTYPE_3GSDI_ASI:
+        case VHD_CHNTYPE_12GSDI_ASI:
             spdlog::debug("Creating SDI input session for RX{}", stream_id);
             return std::make_unique<SdiInputSession>(SdiInputSessionConfiguration{ device_id,
                                                                                    stream_id },
