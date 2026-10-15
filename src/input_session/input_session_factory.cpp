@@ -53,6 +53,16 @@ namespace Deltacast::VideoMonitor::Session
         spdlog::debug("Detected RX{} channel type: {}", stream_id,
                       Deltacast::Wrapper::to_pretty_string(channel_type));
 
+        if (sdp_file_path.has_value() && channel_type != VHD_CHNTYPE_IP_2110)
+        {
+            spdlog::warn("SDP file was provided for non-IP channel type {}",
+                         Deltacast::Wrapper::to_pretty_string(channel_type));
+            throw Exceptions::ConfigurationException(
+                fmt::format("--sdp-file is only valid for IP 2110 channels, but detected channel "
+                            "type: {}",
+                            Deltacast::Wrapper::to_pretty_string(channel_type)));
+        }
+
         if (ip_network_configuration.has_value() && channel_type != VHD_CHNTYPE_IP_2110)
         {
             spdlog::warn("IP network options were provided for non-IP channel type {}",
