@@ -64,7 +64,7 @@ C1 to C11 and C17 to C27 need no signal; C7, C8, C15 and C16 need a board.
 | G2 | Ctrl+C while waiting for a signal | "Stop requested while waiting for initial signal"; exit -1 (255 on Linux) |
 | G3 | Ctrl+C while rendering | "Stop requested, leaving monitor loop"; exit 0; no SDK error; next run starts normally |
 | G4 | Close the window, then Esc on a new run | Exit 0 |
-| G5 | Unplug the input while rendering, replug the same signal | No crash; picture resumes |
+| G5 | Unplug the input while rendering, replug the same signal | No crash; picture resumes (IP: the multicast groups are joined again after 1 s without frames) |
 | G6 | Change the source format while rendering (SDI, HDMI) | "Incoming signal changed on RX<n>, restarting capture cycle", window reopened at the new format. Not applicable to IP: the format comes from the SDP or the options, a sender changing it is not a supported scenario (IP19 covers a mismatching configuration) |
 | G7 | Board with loopback (SDI/HDMI): watch the loop-through output before, during and after a run | Loopback disabled while capturing; after exit (normal, Ctrl+C, error) it is back to its state before the run: re-enabled only if it was enabled |
 | G8 | Second instance on the same board and RX | Second one fails cleanly; first keeps rendering |
@@ -120,7 +120,7 @@ C1 to C11 and C17 to C27 need no signal; C7, C8, C15 and C16 need a board.
 | IP13 | Explicit, no `--ip-main-destination` | Picture |
 | IP14 | `--ip-main-source-filter-mode include` on the sender, include on a wrong sender, exclude on the sender (same for SPS) | Picture; no picture; no picture |
 | IP15 | More source filter addresses than the SDK maximum | "Too many main source filter IP addresses"; exit 1 |
-| IP16 | Source filter with an IPv6 destination | "Source filtering is only supported for IPv4 addresses"; exit 1 |
+| IP16 | IPv6 destination (with or without source filter) | "IPv6 destinations are not supported"; exit 1 |
 | IP17 | Frame rate notations `30/1`, `30000/1000`, `60/2`, `60000/1001`, `30000/1001` | Each selects the sender's standard |
 | IP18 | Format matching no standard (`31/1`, 1921x1080) | "No ST2110-20 video standard matches ..."; exit 1 |
 | IP19 | Explicit format different from the stream (1080p25 on 1080p30, 8-bit on 10-bit) | No crash; wrong or no picture is acceptable; without picture, one "Packets are received on the main stream but no frame is complete" warning |
@@ -133,4 +133,4 @@ C1 to C11 and C17 to C27 need no signal; C7, C8, C15 and C16 need a board.
 | IP26 | `--sdp-file`, IP network or IP media options on an SDI or HDMI channel | "... only valid for IP 2110 channels"; exit 1 |
 | IP27 | Stop (Ctrl+C or window), restart immediately | Multicast groups left on close; second run receives |
 | IP28 | One instance per video channel (`-i 0` to `-i 3`), each on a different stream, all at once | Each window shows its own stream; main always on ETH0, SPS always on ETH1 |
-| IP29 | Two channels on the same multicast group, stop one; then a second instance on a channel already in use | In both cases the remaining instance keeps receiving (no multicast leave affecting it); the second instance fails cleanly |
+| IP29 | Two channels on the same multicast group, stop one; then a second instance on a channel already in use | The instance on the busy channel fails cleanly and the first one keeps receiving. Leaving a shared group stops it for the whole board: the remaining instance joins it again after 1 s without frames and receives again |

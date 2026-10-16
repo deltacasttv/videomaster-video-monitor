@@ -24,6 +24,7 @@
 #include <VideoMasterHD_Core.h>
 #include <VideoMasterHD_SDP.h>
 #endif
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <ipaddress/ip-any-address.hpp>
@@ -70,7 +71,11 @@ namespace Deltacast::VideoMonitor::Session
      private:
         using MulticastGroups = std::vector<std::pair<uint32_t, ipaddress::ip_address>>;
 
+        void ensure_ipv4_destinations() const;
+        void join_multicast_groups();
         void join_multicast_group(const VHD_SDP_IP_ADDRESS& ip_address_struct, uint32_t port_index);
+        // The switch may stop forwarding a group after a link loss: joining again restores it.
+        void rejoin_multicast_groups_when_idle();
         // Logged once per interruption of the frames, not on every slot timeout.
         void report_missing_frames();
 
@@ -81,7 +86,9 @@ namespace Deltacast::VideoMonitor::Session
         VHD_SDP_MEDIA                         m_sps_media = {};
         std::shared_ptr<MulticastGroups> m_multicast_groups = std::make_shared<MulticastGroups>();
         Deltacast::Wrapper::Helper::VideoCharacteristicsFractionalFramerate m_video_characteristics;
-        bool m_use_sps_stream{ false };
-        bool m_missing_frames_reported{ false };
+        bool                                  m_use_sps_stream{ false };
+        bool                                  m_missing_frames_reported{ false };
+        std::chrono::steady_clock::time_point m_last_frame_time;
+        std::chrono::steady_clock::time_point m_last_rejoin_time;
     };
 }  // namespace Deltacast::VideoMonitor::Session

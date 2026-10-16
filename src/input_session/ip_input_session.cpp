@@ -72,12 +72,13 @@ namespace Deltacast::VideoMonitor::Session
     namespace
     {
 
-        constexpr uint32_t dhcp_timeout_seconds = 10;
-        constexpr uint32_t dhcp_poll_interval_ms = 100;
-        constexpr uint32_t main_port_index = 0;
-        constexpr uint32_t sps_port_index = 1;
-        constexpr uint32_t ipv6_byte_count = 16;
-        constexpr uint16_t default_dynamic_rtp_payload_type = 96;
+        constexpr uint32_t                  dhcp_timeout_seconds = 10;
+        constexpr uint32_t                  dhcp_poll_interval_ms = 100;
+        constexpr uint32_t                  main_port_index = 0;
+        constexpr uint32_t                  sps_port_index = 1;
+        constexpr std::chrono::milliseconds multicast_rejoin_period{ 1000 };
+        constexpr uint32_t                  ipv6_byte_count = 16;
+        constexpr uint16_t                  default_dynamic_rtp_payload_type = 96;
 
         auto parse_sdp_ip_address(const VHD_SDP_IP_ADDRESS& ip_address_struct)
             -> ipaddress::ip_address
@@ -510,12 +511,7 @@ namespace Deltacast::VideoMonitor::Session
                                                                                       : "EXCLUDE",
                 source_filter_sources_to_string(media_description));
 
-            port.multicast().set_source_mode(media_description.SourceFilter.DestinationIP.AddressV4,
-                                             media_description.SourceFilter.FilterMode ==
-                                                     VHD_SDP_FILTER_MODE_INCL
-                                                 ? VHD_IP_BRD_FILTERMODEMULTICAST_INCLUDE
-                                                 : VHD_IP_BRD_FILTERMODEMULTICAST_EXCLUDE);
-
+            // The board rejects the filter mode of a group that has no source yet.
             for (ULONG i = 0; i < media_description.SourceFilter.SourceIPCount; ++i)
             {
                 const auto source_ip_address = ipaddress::ipv4_address::from_uint(
@@ -523,6 +519,12 @@ namespace Deltacast::VideoMonitor::Session
                 port.multicast().add_source(media_description.SourceFilter.DestinationIP.AddressV4,
                                             source_ip_address.to_uint());
             }
+
+            port.multicast().set_source_mode(media_description.SourceFilter.DestinationIP.AddressV4,
+                                             media_description.SourceFilter.FilterMode ==
+                                                     VHD_SDP_FILTER_MODE_INCL
+                                                 ? VHD_IP_BRD_FILTERMODEMULTICAST_INCLUDE
+                                                 : VHD_IP_BRD_FILTERMODEMULTICAST_EXCLUDE);
         }
 
         auto
@@ -742,9 +744,66 @@ namespace Deltacast::VideoMonitor::Session
         spdlog::trace("Joined multicast group {} on port {}", ip_address.to_string(), port_index);
     }
 
+    void IpInputSession::join_multicast_groups()
+    {
+        if (!m_multicast_groups->empty())
+        {
+            return;
+        }
+        join_multicast_group(m_main_media.DestinationIP, main_port_index);
+        if (m_use_sps_stream)
+        {
+            join_multicast_group(m_sps_media.DestinationIP, sps_port_index);
+        }
+        m_last_frame_time = std::chrono::steady_clock::now();
+        m_last_rejoin_time = m_last_frame_time;
+    }
+
+    void IpInputSession::rejoin_multicast_groups_when_idle()
+    {
+        const auto now = std::chrono::steady_clock::now();
+        if (m_multicast_groups->empty() || now - m_last_frame_time < multicast_rejoin_period ||
+            now - m_last_rejoin_time < multicast_rejoin_period)
+        {
+            return;
+        }
+        m_last_rejoin_time = now;
+
+        spdlog::debug("No frame for {} ms on RX{}, joining the multicast groups again",
+                      multicast_rejoin_period.count(), this->stream_id());
+        for (const auto& [port_index, group] : *m_multicast_groups)
+        {
+            auto& port = this->board().ip().port(port_index);
+            port.multicast().leave(group.to_uint32());
+            port.multicast().join(group.to_uint32());
+        }
+        auto& board = this->board();
+        configure_multicast_filtering(this->stream().main_stream(),
+                                      board.ip().port(main_port_index), m_main_media);
+        if (m_use_sps_stream)
+        {
+            configure_multicast_filtering(this->stream().sps_stream(),
+                                          board.ip().port(sps_port_index), m_sps_media);
+        }
+    }
+
+    void IpInputSession::ensure_ipv4_destinations() const
+    {
+        const bool main_is_v6 = m_main_media.DestinationIP.Version == VHD_SDP_IP_VERSION_6;
+        const bool sps_is_v6 = m_use_sps_stream &&
+                               m_sps_media.DestinationIP.Version == VHD_SDP_IP_VERSION_6;
+        if (main_is_v6 || sps_is_v6)
+        {
+            throw Exceptions::ConfigurationException(
+                fmt::format("IPv6 destinations are not supported ({} stream)",
+                            main_is_v6 ? "main" : "SPS"));
+        }
+    }
+
     void IpInputSession::open_board()
     {
         spdlog::trace("Opening IP board {} for RX{}", this->device_id(), this->stream_id());
+        ensure_ipv4_destinations();
         this->m_board.reset();
         // Shared with the close callback, which runs after this class's members are destroyed.
         m_multicast_groups = std::make_shared<MulticastGroups>();
@@ -794,13 +853,6 @@ namespace Deltacast::VideoMonitor::Session
             spdlog::trace("Configured IP gateway address {}",
                           m_network_configuration->gateway_v4.to_string());
         }
-
-        join_multicast_group(m_main_media.DestinationIP, main_port_index);
-
-        if (m_use_sps_stream)
-        {
-            join_multicast_group(m_sps_media.DestinationIP, sps_port_index);
-        }
     }
 
     void IpInputSession::prepare_video_stream()
@@ -818,6 +870,9 @@ namespace Deltacast::VideoMonitor::Session
         m_stream = std::make_unique<
             Deltacast::Wrapper::StreamComponents::IpComponents::Ip2110VideoEssenceStream>(
             board.ip().ip2110().video().open_essence_stream(VHD_RX_CHANNEL, stream_id));
+        // Joined only once the channel is ours: an instance failing on a busy channel must not
+        // leave the groups another instance receives.
+        join_multicast_groups();
 
         auto destination_ip_address = parse_sdp_ip_address(m_main_media.DestinationIP);
         spdlog::info("Configuring main ST2110 media: destination {}, "
@@ -830,6 +885,7 @@ namespace Deltacast::VideoMonitor::Session
         m_stream->set_video_standard(m_main_media.ST2110_20.VideoStandard);
         m_stream->set_sampling_rate(m_main_media.ST2110_20.Sampling);
         m_stream->set_bit_depth(m_main_media.ST2110_20.Depth);
+        m_use_sps_stream ? m_stream->enable_sps() : m_stream->disable_sps();
 
         m_video_characteristics = Deltacast::Wrapper::Helper::Ip::video_standard_to_characteristics(
             m_main_media.ST2110_20.VideoStandard);
@@ -900,9 +956,11 @@ namespace Deltacast::VideoMonitor::Session
         catch (const Deltacast::Wrapper::RecoverableApiException&)
         {
             report_missing_frames();
+            rejoin_multicast_groups_when_idle();
             throw;
         }
         m_missing_frames_reported = false;
+        m_last_frame_time = std::chrono::steady_clock::now();
         auto& slot = static_cast<Deltacast::Wrapper::Ip2110VideoSlot&>(*this->m_current_slot);
         return slot.buffer();
     }
