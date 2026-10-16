@@ -133,4 +133,4 @@ C1 to C11 and C17 to C27 need no signal; C7, C8, C15 and C16 need a board.
 | IP26 | `--sdp-file`, IP network or IP media options on an SDI or HDMI channel | "... only valid for IP 2110 channels"; exit 1 |
 | IP27 | Stop (Ctrl+C or window), restart immediately | Multicast groups left on close; second run receives |
 | IP28 | One instance per video channel (`-i 0` to `-i 3`), each on a different stream, all at once | Each window shows its own stream; main always on ETH0, SPS always on ETH1 |
-| IP29 | Two channels on the same multicast group, stop one; then a second instance on a channel already in use | The instance on the busy channel fails cleanly and the first one keeps receiving. Leaving a shared group stops it for the whole board: the remaining instance joins it again after 1 s without frames and receives again |
+| IP29 | Dropped: a channel already in use is covered by G8, one stream per channel by IP28 | - |
