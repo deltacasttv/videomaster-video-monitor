@@ -7,6 +7,7 @@
 # Ignore CMakePresets.json and CMakeUserPresets.json
 CMakePresets.json
 CMakeUserPresets.json
+*.log
 
 # IDE
 /.vscode
