@@ -55,58 +55,58 @@ namespace Deltacast::VideoMonitor::Session
         void open_board() override
         {
             spdlog::trace("Opening board {} for RX{}", this->device_id(), this->stream_id());
+            // Shared with the close callback, which runs after this class's members are destroyed.
+            auto       loopback_was_enabled = std::make_shared<bool>(false);
+            const auto stream_id = this->stream_id();
             this->m_board = std::make_unique<Deltacast::Wrapper::Board>(
                 Deltacast::Wrapper::Board::open(
                     this->device_id(),
-                    [this](Deltacast::Wrapper::Board& board) -> void
+                    [loopback_was_enabled, stream_id](Deltacast::Wrapper::Board& board) -> void
                     {
-                        if (board.has_firmware_loopback(this->stream_id()))
+                        auto* loopback = find_loopback(board, stream_id);
+                        if (loopback != nullptr && *loopback_was_enabled)
                         {
-                            spdlog::trace("Enabling firmware loopback on RX{} for cleanup path",
-                                          this->stream_id());
-                            board.firmware_loopback(this->stream_id()).enable();
-                        }
-                        else if (board.has_active_loopback(this->stream_id()))
-                        {
-                            spdlog::trace("Enabling active loopback on RX{} for cleanup path",
-                                          this->stream_id());
-                            board.active_loopback(this->stream_id()).enable();
-                        }
-                        else if (board.has_passive_loopback(this->stream_id()))
-                        {
-                            spdlog::trace("Enabling passive loopback on RX{} for cleanup path",
-                                          this->stream_id());
-                            board.passive_loopback(this->stream_id()).enable();
+                            spdlog::trace("Restoring the loopback of RX{}", stream_id);
+                            loopback->enable();
                         }
                     }));
 
-            spdlog::trace("Board {} opened for RX{}", this->device_id(), this->stream_id());
+            const auto* loopback = find_loopback(*this->m_board, stream_id);
+            *loopback_was_enabled = loopback != nullptr && loopback->is_enabled();
+            spdlog::trace("Board {} opened for RX{}, loopback initially {}", this->device_id(),
+                          stream_id, *loopback_was_enabled ? "enabled" : "disabled or absent");
         }
 
      protected:
         void disable_loopback()
         {
-            auto& board = this->board();
-
-            if (board.has_firmware_loopback(this->stream_id()))
-            {
-                spdlog::trace("Disabling firmware loopback on RX{}", this->stream_id());
-                board.firmware_loopback(this->stream_id()).disable();
-            }
-            else if (board.has_active_loopback(this->stream_id()))
-            {
-                spdlog::trace("Disabling active loopback on RX{}", this->stream_id());
-                board.active_loopback(this->stream_id()).disable();
-            }
-            else if (board.has_passive_loopback(this->stream_id()))
-            {
-                spdlog::trace("Disabling passive loopback on RX{}", this->stream_id());
-                board.passive_loopback(this->stream_id()).disable();
-            }
-            else
+            auto* loopback = find_loopback(this->board(), this->stream_id());
+            if (loopback == nullptr)
             {
                 spdlog::trace("No loopback to disable on RX{}", this->stream_id());
+                return;
             }
+            spdlog::trace("Disabling loopback on RX{}", this->stream_id());
+            loopback->disable();
+        }
+
+     private:
+        static auto find_loopback(Deltacast::Wrapper::Board& board, uint32_t stream_id)
+            -> Deltacast::Wrapper::BoardComponents::Loopback*
+        {
+            if (board.has_firmware_loopback(stream_id))
+            {
+                return &board.firmware_loopback(stream_id);
+            }
+            if (board.has_active_loopback(stream_id))
+            {
+                return &board.active_loopback(stream_id);
+            }
+            if (board.has_passive_loopback(stream_id))
+            {
+                return &board.passive_loopback(stream_id);
+            }
+            return nullptr;
         }
     };
 }  // namespace Deltacast::VideoMonitor::Session
