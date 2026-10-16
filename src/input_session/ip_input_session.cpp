@@ -778,9 +778,12 @@ namespace Deltacast::VideoMonitor::Session
             port.multicast().join(group.to_uint32());
         }
         auto& board = this->board();
-        configure_multicast_filtering(this->stream().main_stream(),
-                                      board.ip().port(main_port_index), m_main_media);
-        if (m_use_sps_stream)
+        if (parse_sdp_ip_address(m_main_media.DestinationIP).is_multicast())
+        {
+            configure_multicast_filtering(this->stream().main_stream(),
+                                          board.ip().port(main_port_index), m_main_media);
+        }
+        if (m_use_sps_stream && parse_sdp_ip_address(m_sps_media.DestinationIP).is_multicast())
         {
             configure_multicast_filtering(this->stream().sps_stream(),
                                           board.ip().port(sps_port_index), m_sps_media);
