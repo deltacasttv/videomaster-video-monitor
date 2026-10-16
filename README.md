@@ -148,3 +148,7 @@ Windows (PowerShell):
 Linux/macOS:
 
     xargs ./videomaster-video-monitor < args.txt
+
+# Known limitations
+
+Interlaced video is shown with both fields woven into one frame, without deinterlacing: moving content shows combing ([video-viewer#48](https://github.com/deltacasttv/video-viewer/issues/48)).
