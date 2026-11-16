@@ -39,7 +39,7 @@ class VideoMonitor(ConanFile):
             self.requires(dep)
 
         self.requires("cli11/[>=2 <3]")
-        self.requires("spdlog/[>=1 <2]")
+        self.requires("spdlog/[>=1.16 <2]")  # first spdlog whose recipe requires fmt 12
         self.requires("fmt/[>=12 <13]")
         self.requires("ipaddress/[>=1 <2]")
 

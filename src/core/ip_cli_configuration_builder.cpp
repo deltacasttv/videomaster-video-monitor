@@ -131,14 +131,6 @@ namespace Deltacast::VideoMonitor::Core
                 "--ip-video-framerate-den");
         }
 
-        if (has_sps_explicit_option && !has_explicit_media_core(options.core))
-        {
-            throw Deltacast::VideoMonitor::Exceptions::ConfigurationException(
-                "Explicit SPS media mode requires --ip-video-width, --ip-video-height, "
-                "--ip-video-interlaced, --ip-video-bit-depth, --ip-video-framerate-num and "
-                "--ip-video-framerate-den");
-        }
-
         if (options.source_ip.has_value())
         {
             Deltacast::VideoMonitor::Helper::parse_ip_address(options.source_ip.value(),

@@ -203,7 +203,7 @@ namespace Deltacast::VideoMonitor
                 }
                 catch (const Deltacast::Wrapper::RecoverableApiException& ex)
                 {
-                    spdlog::warn("Recoverable error while capturing video buffer: {}", ex.what());
+                    spdlog::debug("Recoverable error while capturing video buffer: {}", ex.what());
 #if defined(__APPLE__)
                     renderer.render_iteration();
 #endif

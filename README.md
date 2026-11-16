@@ -22,7 +22,28 @@ VideoViewer requires some dependencies to be installed on the system:
 
 We recommend using Conan 2.x to retrieve those dependencies:
 
-    conan install . -b missing
+    conan install . -b missing -s build_type=Release
+
+Use `-s build_type=Debug` for a debug build.
+
+### Conan profiles
+
+Reference profiles are provided in `.conan/profiles` (`windows-msvc`, `linux-gcc`, `macos-clang`). They are optional; to use one instead of your default profile:
+
+    conan install . -b missing -pr:a .conan/profiles/linux-gcc -s build_type=Release
+
+The `windows-msvc` profile selects the Ninja generator, which must be installed.
+
+### Lockfile
+
+`conan.lock` pins the exact versions and recipe revisions of the dependencies for Windows, Linux and macOS. Conan uses it automatically when it sits next to `conanfile.py`, so `conan install` needs no extra option.
+
+To upgrade the dependencies within the ranges declared in `conanfile.py`, delete `conan.lock` and regenerate it for each profile and build type, completing the same file:
+
+    conan lock create . -pr:a .conan/profiles/windows-msvc -s build_type=Release
+    conan lock create . -pr:a .conan/profiles/windows-msvc -s build_type=Debug --lockfile=conan.lock --lockfile-partial --lockfile-out=conan.lock
+
+Repeat the second command with the `linux-gcc` and `macos-clang` profiles, for both build types.
 
 ## video-viewer
 
@@ -30,7 +51,7 @@ The rendering window comes from `video-viewer` 2.0.0, a git submodule in `deps/v
 
 ## VideoMaster SDK
 
-The VideoMaster SDK is required to build the application.
+The VideoMaster SDK 6.36 or later is required to build the application.
 
 After installing the SDK according to the official documentation, the libs and headers should be found without further step needed through the `find_package` command.
 
@@ -40,6 +61,13 @@ If you used Conan to retrieve your dependencies, you can use the following comma
 
     cmake --preset conan-release
     cmake --build --preset conan-release
+
+With the Visual Studio generator (the Windows default when the `windows-msvc` profile is not used), the configure preset is `conan-default`:
+
+    cmake --preset conan-default
+    cmake --build --preset conan-release
+
+After a debug `conan install`, replace `release` with `debug` in the preset names.
 
 # How to use
 

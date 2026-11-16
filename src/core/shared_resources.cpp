@@ -17,6 +17,5 @@
 
 void Deltacast::VideoMonitor::SharedResources::reset()
 {
-    stop_is_requested = false;
     incoming_signal_changed = false;
 }

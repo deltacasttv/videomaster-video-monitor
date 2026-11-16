@@ -316,6 +316,15 @@ namespace Deltacast::VideoMonitor::Session
             return result;
         }
 
+        // The 48-bit MAC address sits in the low bits, most significant byte first.
+        auto mac_address_to_string(uint64_t mac_address) -> std::string
+        {
+            return fmt::format("{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+                               (mac_address >> 40) & 0xFF, (mac_address >> 32) & 0xFF,
+                               (mac_address >> 24) & 0xFF, (mac_address >> 16) & 0xFF,
+                               (mac_address >> 8) & 0xFF, mac_address & 0xFF);
+        }
+
         auto network_mode_to_string(IpNetworkMode mode) -> const char*
         {
             return mode == IpNetworkMode::Dhcp ? "DHCP" : "static";
@@ -358,13 +367,9 @@ namespace Deltacast::VideoMonitor::Session
             spdlog::trace("Configuring IP port {} in {} mode", port_index,
                           network_mode_to_string(mode));
 
-            spdlog::debug(
-                "Configuring IP port {} - MAC address: {} ({}), factory MAC address: {} ({})",
-                port_index,
-                ipaddress::ipv6_address::from_uint(port.custom_mac_address()).to_string(),
-                port.custom_mac_address(),
-                ipaddress::ipv6_address::from_uint(port.factory_mac_address()).to_string(),
-                port.factory_mac_address());
+            spdlog::debug("Configuring IP port {} - MAC address: {}, factory MAC address: {}",
+                          port_index, mac_address_to_string(port.custom_mac_address()),
+                          mac_address_to_string(port.factory_mac_address()));
 
             if (mode == IpNetworkMode::Dhcp)
             {
@@ -869,6 +874,7 @@ namespace Deltacast::VideoMonitor::Session
                 : m_main_media.PayloadType
         };
         spdlog::trace("Opening ST2110-20 essence stream for RX{}", stream_id);
+        this->release_stream();
 
         m_stream = std::make_unique<
             Deltacast::Wrapper::StreamComponents::IpComponents::Ip2110VideoEssenceStream>(

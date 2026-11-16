@@ -1,0 +1,17 @@
+{
+    "version": "0.5",
+    "requires": [
+        "xorg/system#98f82cb669e4ebc6b4d9d8a4f3f1faf4%1760104150.434",
+        "spdlog/1.17.0#bcbaaf7147bda6ad24ffbd1ac3d7142c%1775124354.941",
+        "opengl/system#7c02ea6ef926fd04844af53622a30541%1760094050.293",
+        "ipaddress/1.2.1#d09ed09e733c0ba8e25a9b5243556cc0%1761955015.108",
+        "glm/1.0.3#debeffa033a21e12074ba5e361989c90%1782474723.712",
+        "glfw/3.4#41cc24c744dc4c80571f5dd10dcd9cda%1760093487.108",
+        "glad/2.0.8#a296ca44353184764ba2d698034b9d94%1757486213.942",
+        "fmt/12.1.0#6baf0fb8351783472b94ee6e36232391%1785754553.994",
+        "cli11/2.6.2#312ccb795ff5b571d9f4b1a3637b1eee%1776949795.774"
+    ],
+    "build_requires": [],
+    "python_requires": [],
+    "config_requires": []
+}
