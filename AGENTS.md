@@ -55,6 +55,11 @@ it; it will be addressed in the future.
 ### Install dependencies
 `conan install . -b missing -s build_type=<Debug|Release>`
 
+`conan.lock` pins the dependency versions and is used automatically by
+`conan install`. Never edit it by hand: after changing a requirement in
+`conanfile.py`, regenerate it for every profile in `.conan/profiles`, as
+described in the README.
+
 ### Configure
 `cmake --preset conan-<release|debug>`
 
