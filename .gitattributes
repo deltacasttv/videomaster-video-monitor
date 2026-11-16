@@ -1,0 +1,8 @@
+# LF everywhere, in the repository and in working copies
+* text=auto eol=lf
+
+# Binary files
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary

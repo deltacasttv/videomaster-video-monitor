@@ -1,0 +1,94 @@
+/*
+ * SPDX-FileCopyrightText: Copyright (c) DELTACAST.TV. All rights reserved.
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at * * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
+#include <VideoMasterCppApi/helper/sdp.hpp>
+#include <VideoMasterCppApi/helper/video.hpp>
+#include <VideoMasterCppApi/stream/ip/video.hpp>
+#if defined(__APPLE__)
+#include <VideoMasterHD/VideoMasterHD_Core.h>
+#include <VideoMasterHD/VideoMasterHD_SDP.h>
+#else
+#include <VideoMasterHD_Core.h>
+#include <VideoMasterHD_SDP.h>
+#endif
+#include <chrono>
+#include <cstdint>
+#include <filesystem>
+#include <ipaddress/ip-any-address.hpp>
+#include <ipaddress/ipaddress.hpp>
+#include <memory>
+#include <optional>
+#include <utility>
+#include <vector>
+
+#include "input_session.hpp"
+#include "ip_input_configuration.hpp"
+#include "shared_resources.hpp"
+
+namespace Deltacast::VideoMonitor::Session
+{
+    struct IpInputSessionConfig : InputSessionConfig
+    {
+        std::optional<std::filesystem::path>  sdp_file_path;
+        std::optional<IpNetworkConfiguration> network_configuration;
+        std::optional<IpInputConfiguration>   input_configuration;
+    };
+
+    class IpInputSession
+        : public InputSession<
+              Deltacast::Wrapper::StreamComponents::IpComponents::Ip2110VideoEssenceStream>
+    {
+     public:
+        explicit IpInputSession(const IpInputSessionConfig&               config,
+                                Deltacast::VideoMonitor::SharedResources& shared_resources);
+
+        virtual ~IpInputSession() = default;
+
+        void open_board() override;
+        void prepare_video_stream() override;
+        void configure_video_stream() override;
+        auto video_input_has_changed() -> bool override;
+        auto get_video_buffer() -> std::pair<UBYTE*, ULONG> override;
+        auto get_video_characteristics()
+            -> Deltacast::Wrapper::Helper::VideoCharacteristics override;
+
+     protected:
+        auto has_video_input_changed() -> bool override;
+
+     private:
+        using MulticastGroups = std::vector<std::pair<uint32_t, ipaddress::ip_address>>;
+
+        void ensure_ipv4_destinations() const;
+        void join_multicast_groups();
+        void join_multicast_group(const VHD_SDP_IP_ADDRESS& ip_address_struct, uint32_t port_index);
+        // The switch may stop forwarding a group after a link loss: joining again restores it.
+        void rejoin_multicast_groups_when_idle();
+        // Logged once per interruption of the frames, not on every slot timeout.
+        void report_missing_frames();
+
+        std::optional<IpNetworkConfiguration> m_network_configuration;
+        std::optional<IpInputConfiguration>   m_input_configuration;
+        VHD_SDP_SESSION                       m_session = {};
+        VHD_SDP_MEDIA                         m_main_media = {};
+        VHD_SDP_MEDIA                         m_sps_media = {};
+        std::shared_ptr<MulticastGroups> m_multicast_groups = std::make_shared<MulticastGroups>();
+        Deltacast::Wrapper::Helper::VideoCharacteristicsFractionalFramerate m_video_characteristics;
+        bool                                  m_use_sps_stream{ false };
+        bool                                  m_missing_frames_reported{ false };
+        std::chrono::steady_clock::time_point m_last_frame_time;
+        std::chrono::steady_clock::time_point m_last_rejoin_time;
+    };
+}  // namespace Deltacast::VideoMonitor::Session

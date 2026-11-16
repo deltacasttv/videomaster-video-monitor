@@ -15,8 +15,10 @@
 
 #pragma once
 
-#define VERMAJOR         @CMAKE_PROJECT_VERSION_MAJOR@
-#define VERMINOR         @CMAKE_PROJECT_VERSION_MINOR@
-#define VERPATCH         @CMAKE_PROJECT_VERSION_PATCH@
+/* clang-format off */
+#define VERMAJOR @CMAKE_PROJECT_VERSION_MAJOR@
+#define VERMINOR @CMAKE_PROJECT_VERSION_MINOR@
+#define VERPATCH @CMAKE_PROJECT_VERSION_PATCH@
+/* clang-format on */
 
-#define VERSTRING        "@GIT_VERSION@"
+#define VERSTRING "@GIT_VERSION@"
